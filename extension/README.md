@@ -36,6 +36,7 @@
 - `Prompt Library`：管理常用提示词并插入输入框
 - 点击公式：自动复制标准化 `$...$`
 - `Export Selected MD`：按问题编号导出对应问答块
+- 若千问/豆包/DeepSeek历史未完整显示，请先滚动加载历史，索引会自动增量刷新
 
 ### 快捷键
 
@@ -75,6 +76,7 @@
 - `Prompt Library`: manage and insert reusable prompts
 - Click formula output to copy normalized `$...$`
 - `Export Selected MD`: export selected Q&A block
+- If Qwen/Doubao/DeepSeek history is not fully visible yet, scroll up first; index refresh is incremental
 
 ### Shortcuts
 

@@ -49,6 +49,62 @@
     return output.trim();
   }
 
+  function linkDensity(el) {
+    const text = normalizeText(el.innerText || el.textContent || "");
+    if (!text) {
+      return 1;
+    }
+    let linkTextLen = 0;
+    const links = el.querySelectorAll("a");
+    for (const link of links) {
+      linkTextLen += normalizeText(link.textContent || "").length;
+    }
+    return linkTextLen / Math.max(1, text.length);
+  }
+
+  function extractBestText(el, selectors) {
+    const candidates = [];
+    if (Array.isArray(selectors)) {
+      for (const selector of selectors) {
+        const node = el.querySelector(selector);
+        if (node) {
+          candidates.push(node);
+        }
+      }
+    }
+    candidates.push(el);
+
+    let best = "";
+    for (const node of candidates) {
+      const text = cleanMessageText(node.innerText || node.textContent || "");
+      if (text.length > best.length) {
+        best = text;
+      }
+    }
+    return best;
+  }
+
+  function looksLikeMessageContainer(el) {
+    if (isLikelyNavigationNode(el)) {
+      return false;
+    }
+    const text = normalizeText(el.innerText || el.textContent || "");
+    if (text.length < 2) {
+      return false;
+    }
+    if (isLikelyUrlOnlyText(text)) {
+      return false;
+    }
+    if (linkDensity(el) > 0.7) {
+      return false;
+    }
+    const buttons = el.querySelectorAll("button").length;
+    if (buttons > 8 && text.length < 200) {
+      return false;
+    }
+    return true;
+  }
+
   function isLikelyNavigationNode(el) {
     if (el.closest("nav, aside, header, footer")) {
       return true;
@@ -142,6 +198,9 @@
     cleanMessageText,
     isLikelyNavigationNode,
     isLikelyUrlOnlyText,
+    linkDensity,
+    extractBestText,
+    looksLikeMessageContainer,
     inferRoleCommon,
     stableNodeHash,
     shouldTreatAsMessage

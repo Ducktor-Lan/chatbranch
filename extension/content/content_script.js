@@ -687,7 +687,7 @@
   function getOutlineItems() {
     const list = [];
     for (const m of state.orderedMessages) {
-      if (m.role === "user") {
+      if (m.role === "user" && String(m.text || "").trim().length >= 3) {
         list.push({ ...m, order: list.length + 1, title: makeTitle(m.text) });
       }
     }

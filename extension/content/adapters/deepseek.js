@@ -13,8 +13,12 @@
   function getMessageElements() {
     const root = document.querySelector("main") || document;
     const selectors = [
+      "[data-testid*='chat-message']",
+      "[data-testid*='message-item']",
+      "[data-testid*='conversation-turn']",
       "chat-turn",
       "div[role='listitem']",
+      "li[role='listitem']",
       "article",
       "[data-message-author-role]",
       "[data-role]",
@@ -27,7 +31,7 @@
     const raw = utils.uniqueElements(selectors, root);
     const elements = utils.pruneNestedElements(raw);
     return elements.filter((el) => {
-      if (!utils.shouldTreatAsMessage(el) || utils.isLikelyNavigationNode(el)) {
+      if (!utils.shouldTreatAsMessage(el) || !utils.looksLikeMessageContainer(el)) {
         return false;
       }
       const text = getText(el);
@@ -57,6 +61,12 @@
     }
 
     const token = `${el.className || ""} ${el.getAttribute("aria-label") || ""}`.toLowerCase();
+    if (token.includes("question") || token.includes("query") || token.includes("prompt")) {
+      return "user";
+    }
+    if (token.includes("response") || token.includes("answer") || token.includes("result")) {
+      return "assistant";
+    }
     if (token.includes("user") || token.includes("question") || token.includes("query")) {
       return "user";
     }
@@ -67,12 +77,15 @@
   }
 
   function getText(el) {
-    const preferred =
-      el.querySelector("[data-testid*='message-content']") ||
-      el.querySelector("[class*='message-content']") ||
-      el.querySelector("[class*='markdown']") ||
-      el;
-    return utils.cleanMessageText(preferred.innerText || preferred.textContent || "");
+    return utils.extractBestText(el, [
+      "[data-testid*='message-content']",
+      "[data-testid*='question']",
+      "[data-testid*='answer']",
+      "[class*='message-content']",
+      "[class*='bubble-content']",
+      "[class*='markdown']",
+      "[class*='content']"
+    ]);
   }
 
   function ensureAnchor(el) {
