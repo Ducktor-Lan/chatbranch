@@ -4,6 +4,10 @@
 
 ChatBranch 是一个面向 Chrome/Edge（MV3）的 AI 对话导航与分支提问扩展。
 
+<p align="center">
+  <img src="images/logo.png" alt="ChatBranch Logo" width="180" />
+</p>
+
 ---
 
 ## 中文

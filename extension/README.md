@@ -2,6 +2,10 @@
 
 中文优先文档。English version: [Jump to English](#english)
 
+<p align="center">
+  <img src="../images/logo.png" alt="ChatBranch Logo" width="150" />
+</p>
+
 ---
 
 ## 中文
