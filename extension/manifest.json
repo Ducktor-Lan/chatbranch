@@ -9,7 +9,8 @@
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
     "https://gemini.google.com/*",
-    "https://m365.cloud.microsoft/*"
+    "https://m365.cloud.microsoft/*",
+    "https://chat.deepseek.com/*"
   ],
   "background": {
     "service_worker": "service_worker.js"
@@ -24,7 +25,8 @@
         "https://chatgpt.com/*",
         "https://chat.openai.com/*",
         "https://gemini.google.com/*",
-        "https://m365.cloud.microsoft/*"
+        "https://m365.cloud.microsoft/*",
+        "https://chat.deepseek.com/*"
       ],
       "js": [
         "content/adapters/utils.js",
@@ -32,6 +34,7 @@
         "content/adapters/chatgpt.js",
         "content/adapters/gemini.js",
         "content/adapters/m365.js",
+        "content/adapters/deepseek.js",
         "content/content_script.js"
       ],
       "css": ["content/styles.css"],
