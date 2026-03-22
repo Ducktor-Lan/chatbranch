@@ -27,6 +27,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
 
 .chatbranch-title {
@@ -228,6 +229,26 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.chatbranch-wake-btn {
+  position: fixed;
+  right: 8px;
+  top: 42vh;
+  z-index: 2147483500;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-right: 0;
+  background: rgba(255, 255, 255, 0.96);
+  color: #334155;
+  border-radius: 10px 0 0 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+}
+
+.chatbranch-wake-btn:hover {
+  background: #ffffff;
 }
 
 .chatbranch-overlay-visible {

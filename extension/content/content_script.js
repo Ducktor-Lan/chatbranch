@@ -34,6 +34,8 @@
     promptModal: null,
     promptListRoot: null,
     promptInput: null,
+    wakeButton: null,
+    isCollapsed: false,
     messageByEl: new WeakMap(),
     orderedMessages: [],
     scheduled: false,
@@ -82,8 +84,7 @@
         return;
       }
       if (message.type === "CHATBRANCH_TOGGLE_PANEL") {
-        state.panelVisible = !state.panelVisible;
-        state.panel?.classList.toggle("chatbranch-hidden", !state.panelVisible);
+        togglePanelVisibility();
       }
       if (message.type === "CHATBRANCH_FOCUS_SEARCH") {
         state.searchInput?.focus();
@@ -296,6 +297,7 @@
     panel.innerHTML =
       '<div class="chatbranch-head">' +
       '<div class="chatbranch-title">ChatBranch</div>' +
+      '<button id="chatbranch-collapse" class="chatbranch-btn chatbranch-tool-btn" type="button">Fold</button>' +
       "</div>" +
       '<input id="chatbranch-search" class="chatbranch-search" type="text" placeholder="Search user prompts" />' +
       '<div id="chatbranch-status" class="chatbranch-status">Parsing...</div>' +
@@ -313,6 +315,7 @@
     state.metaRoot = panel.querySelector("#chatbranch-meta");
 
     const tools = panel.querySelector("#chatbranch-tools");
+    panel.querySelector("#chatbranch-collapse")?.addEventListener("click", () => collapsePanel());
     if (tools) {
       const promptBtn = document.createElement("button");
       promptBtn.className = "chatbranch-btn chatbranch-tool-btn";
@@ -330,6 +333,49 @@
     }
 
     state.searchInput?.addEventListener("input", () => renderOutline());
+
+    const wakeButton = document.createElement("button");
+    wakeButton.id = "chatbranch-wake";
+    wakeButton.className = "chatbranch-wake-btn";
+    wakeButton.type = "button";
+    wakeButton.textContent = "ChatBranch";
+    wakeButton.style.display = "none";
+    wakeButton.addEventListener("click", () => expandPanel());
+    document.body.appendChild(wakeButton);
+    state.wakeButton = wakeButton;
+  }
+
+  function collapsePanel() {
+    state.isCollapsed = true;
+    if (state.panel) {
+      state.panel.classList.add("chatbranch-hidden");
+    }
+    if (state.wakeButton) {
+      state.wakeButton.style.display = "inline-flex";
+    }
+  }
+
+  function expandPanel() {
+    state.isCollapsed = false;
+    state.panelVisible = true;
+    if (state.panel) {
+      state.panel.classList.remove("chatbranch-hidden");
+    }
+    if (state.wakeButton) {
+      state.wakeButton.style.display = "none";
+    }
+  }
+
+  function togglePanelVisibility() {
+    if (state.isCollapsed) {
+      expandPanel();
+      return;
+    }
+    state.panelVisible = !state.panelVisible;
+    state.panel?.classList.toggle("chatbranch-hidden", !state.panelVisible);
+    if (state.wakeButton) {
+      state.wakeButton.style.display = state.panelVisible ? "none" : "inline-flex";
+    }
   }
 
   function openPromptLibrary() {

@@ -20,28 +20,6 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 });
 
-chrome.commands.onCommand.addListener(async (command) => {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) {
-    return;
-  }
-
-  if (command === "quick-ask") {
-    chrome.tabs.sendMessage(tab.id, {
-      type: "CHATBRANCH_OPEN_QUICKASK_DIALOG",
-      selectionText: ""
-    });
-    return;
-  }
-  if (command === "toggle-panel") {
-    chrome.tabs.sendMessage(tab.id, { type: "CHATBRANCH_TOGGLE_PANEL" });
-    return;
-  }
-  if (command === "focus-search") {
-    chrome.tabs.sendMessage(tab.id, { type: "CHATBRANCH_FOCUS_SEARCH" });
-  }
-});
-
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || message.type !== "CHATBRANCH_OPEN_TAB") {
     return;

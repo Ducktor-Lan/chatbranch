@@ -36,9 +36,7 @@
 
 ### 快捷键
 
-- `Alt+I`：显示/隐藏面板
-- `Alt+S`：聚焦搜索框
-- `Alt+Shift+Q`：打开 Quick Ask 提问流程
+- 当前版本已移除默认快捷键，主要通过右键菜单和面板按钮操作
 
 ---
 
@@ -74,6 +72,4 @@
 
 ### Shortcuts
 
-- `Alt+I`: Toggle panel
-- `Alt+S`: Focus search
-- `Alt+Shift+Q`: Open quick ask dialog
+- No default shortcuts in current version; use context menu and panel controls

@@ -17,26 +17,6 @@
     "default_title": "ChatBranch"
   },
   "options_page": "options/options.html",
-  "commands": {
-    "quick-ask": {
-      "suggested_key": {
-        "default": "Alt+Shift+Q"
-      },
-      "description": "Quick ask with selected text"
-    },
-    "toggle-panel": {
-      "suggested_key": {
-        "default": "Alt+I"
-      },
-      "description": "Toggle ChatBranch panel"
-    },
-    "focus-search": {
-      "suggested_key": {
-        "default": "Alt+S"
-      },
-      "description": "Focus ChatBranch search"
-    }
-  },
   "content_scripts": [
     {
       "matches": [
