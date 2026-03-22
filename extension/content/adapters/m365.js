@@ -17,19 +17,16 @@
       document;
 
     const selectors = [
-      "div[data-content]",
+      "[id^='user-message-']",
+      ".fai-UserMessage__message",
+      "[data-testid='copilot-message-div']",
+      "[data-testid='copilot-message-reply-div']",
+      "[data-testid='loading-message']",
       "div[role='listitem']",
-      "article",
       "[data-message-author-role]",
       "[data-role]",
-      "[data-testid*='message']",
-      "[data-testid*='turn']",
-      "[class*='message']",
-      "[class*='chat-item']",
-      "[class*='turn']",
-      "[class*='user']",
-      "[class*='assistant']",
-      "[class*='copilot']"
+      "[class*='fai-UserMessage']",
+      "[class*='copilot-message']"
     ];
 
     const raw = utils.uniqueElements(selectors, root);
@@ -37,6 +34,9 @@
 
     return elements.filter((el) => {
       if (!utils.shouldTreatAsMessage(el) || !utils.looksLikeMessageContainer(el)) {
+        return false;
+      }
+      if (isCompositeContainer(el)) {
         return false;
       }
       const text = getText(el);
@@ -48,6 +48,22 @@
   }
 
   function getRole(el) {
+    const dataTestId = (el.getAttribute("data-testid") || "").toLowerCase();
+    const id = (el.id || "").toLowerCase();
+    const cls = (el.className || "").toString().toLowerCase();
+
+    if (id.startsWith("user-message-") || cls.includes("fai-usermessage") || cls.includes("user-message")) {
+      return "user";
+    }
+    if (
+      dataTestId === "copilot-message-div" ||
+      dataTestId === "copilot-message-reply-div" ||
+      dataTestId === "loading-message" ||
+      cls.includes("copilot-message")
+    ) {
+      return "assistant";
+    }
+
     const roleAttr =
       el.getAttribute("data-message-author-role") ||
       el.getAttribute("data-role") ||
@@ -84,16 +100,38 @@
   }
 
   function getText(el) {
-    return utils.extractBestText(el, [
+    let text = utils.extractBestText(el, [
       "[data-testid*='message-content']",
       "[data-testid*='question']",
       "[data-testid*='answer']",
+      ".fai-UserMessage__message",
       "[data-role='message-content']",
       "[class*='message-content']",
       "[class*='content']",
       "[class*='markdown']",
       "[class*='prose']"
     ]);
+    text = text
+      .replace(/^you\s*said\s*:\s*/i, "")
+      .replace(/^copilot\s*said\s*:\s*/i, "")
+      .trim();
+    return text;
+  }
+
+  function isCompositeContainer(el) {
+    const dataTestId = (el.getAttribute("data-testid") || "").toLowerCase();
+    const id = (el.id || "").toLowerCase();
+    const text = (el.innerText || "").toLowerCase();
+    if (dataTestId === "m365-chat-llm-web-ui-chat-message") {
+      return true;
+    }
+    if (id.startsWith("chatmessagecontainer")) {
+      return true;
+    }
+    if (text.includes("you said:") && text.includes("copilot said:")) {
+      return true;
+    }
+    return false;
   }
 
   function ensureAnchor(el) {

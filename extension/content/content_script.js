@@ -249,6 +249,13 @@
       node.dispatchEvent(new InputEvent("input", { bubbles: true, data: prompt, inputType: "insertText" }));
       return true;
     }
+    if ((node.getAttribute("role") || "") === "textbox") {
+      node.focus();
+      node.textContent = prompt;
+      node.dispatchEvent(new Event("beforeinput", { bubbles: true }));
+      node.dispatchEvent(new InputEvent("input", { bubbles: true, data: prompt, inputType: "insertText" }));
+      return true;
+    }
     return false;
   }
 
@@ -267,6 +274,13 @@
     if (node.isContentEditable) {
       node.focus();
       node.textContent = node.textContent ? `${node.textContent}\n${extra}` : extra;
+      node.dispatchEvent(new InputEvent("input", { bubbles: true, data: extra, inputType: "insertText" }));
+      return true;
+    }
+    if ((node.getAttribute("role") || "") === "textbox") {
+      node.focus();
+      node.textContent = node.textContent ? `${node.textContent}\n${extra}` : extra;
+      node.dispatchEvent(new Event("beforeinput", { bubbles: true }));
       node.dispatchEvent(new InputEvent("input", { bubbles: true, data: extra, inputType: "insertText" }));
       return true;
     }
