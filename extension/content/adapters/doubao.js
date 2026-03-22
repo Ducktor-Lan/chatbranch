@@ -12,6 +12,7 @@
 
   function getMessageElements() {
     const root = document.querySelector("main") || document;
+    const userSeedTexts = collectUserSeedTexts(root);
     const selectors = [
       "[data-testid='union_message']",
       "[data-testid='send_message']",
@@ -46,11 +47,20 @@
       if (!text || utils.isLikelyUrlOnlyText(text)) {
         continue;
       }
+      const normalizedText = normalizeForMatch(text);
+      const testid = (el.getAttribute("data-testid") || "").toLowerCase();
+      if (
+        userSeedTexts.has(normalizedText) &&
+        testid !== "send_message" &&
+        testid !== "union_message"
+      ) {
+        continue;
+      }
       if (role === "user" && !isMeaningfulUserText(text)) {
         continue;
       }
 
-      candidates.push({ el, role, text, testid: (el.getAttribute("data-testid") || "").toLowerCase() });
+      candidates.push({ el, role, text, testid });
     }
 
     const seen = new Set();
@@ -76,10 +86,13 @@
     }
     if (testid === "message_content" || testid === "message_text_content") {
       const cls = (el.className || "").toString().toLowerCase();
-      if (cls.includes("justify-end")) {
+      if (cls.includes("justify-end") || hasUserDirectionAncestor(el)) {
         return "user";
       }
-      return "assistant";
+      if (testid === "message_content") {
+        return "assistant";
+      }
+      return "unknown";
     }
 
     const roleAttr =
@@ -99,6 +112,17 @@
       return "user";
     }
     if (cls.includes("thinking") || cls.includes("message-content") || cls.includes("message_text_content")) {
+      return "assistant";
+    }
+
+    const text = cleanupDoubaoText(el.innerText || "");
+    if (/已完成思考|这里给你|你想要|正确的命令|命令解释/.test(text)) {
+      return "assistant";
+    }
+    if (/\?|？/.test(text) && text.length < 120) {
+      return "user";
+    }
+    if (text.length > 160) {
       return "assistant";
     }
 
@@ -148,6 +172,30 @@
       return true;
     }
     return false;
+  }
+
+  function hasUserDirectionAncestor(el) {
+    return Boolean(el.closest("[class*='justify-end']") || el.closest("[data-testid='send_message']"));
+  }
+
+  function collectUserSeedTexts(root) {
+    const seeds = new Set();
+    const userNodes = root.querySelectorAll("[data-testid='send_message'], [data-testid='union_message']");
+    for (const node of userNodes) {
+      if (!(node instanceof HTMLElement)) {
+        continue;
+      }
+      const text = getText(node);
+      const normalized = normalizeForMatch(text);
+      if (normalized) {
+        seeds.add(normalized);
+      }
+    }
+    return seeds;
+  }
+
+  function normalizeForMatch(text) {
+    return String(text || "").replace(/\s+/g, " ").trim();
   }
 
   function isComposerNode(el) {
