@@ -8,7 +8,11 @@
   "host_permissions": [
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
-    "https://gemini.google.com/*"
+    "https://gemini.google.com/*",
+    "https://www.qianwen.com/*",
+    "https://www.doubao.com/*",
+    "https://chat.deepseek.com/*",
+    "https://www.deepseek.com/*"
   ],
   "background": {
     "service_worker": "service_worker.js"
@@ -22,13 +26,20 @@
       "matches": [
         "https://chatgpt.com/*",
         "https://chat.openai.com/*",
-        "https://gemini.google.com/*"
+        "https://gemini.google.com/*",
+        "https://www.qianwen.com/*",
+        "https://www.doubao.com/*",
+        "https://chat.deepseek.com/*",
+        "https://www.deepseek.com/*"
       ],
       "js": [
         "content/adapters/utils.js",
         "content/adapters/registry.js",
         "content/adapters/chatgpt.js",
         "content/adapters/gemini.js",
+        "content/adapters/qwen.js",
+        "content/adapters/doubao.js",
+        "content/adapters/deepseek.js",
         "content/content_script.js"
       ],
       "css": ["content/styles.css"],

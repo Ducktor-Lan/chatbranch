@@ -14,7 +14,10 @@
   const QUICK_ASK_TARGETS = {
     "same-site": null,
     chatgpt: "https://chatgpt.com/",
-    gemini: "https://gemini.google.com/app"
+    gemini: "https://gemini.google.com/app",
+    qwen: "https://www.qianwen.com/",
+    doubao: "https://www.doubao.com/chat/",
+    deepseek: "https://chat.deepseek.com/"
   };
 
   const state = {
@@ -610,6 +613,15 @@
     }
     if (target === "gemini") {
       return "https://gemini.google.com/app";
+    }
+    if (target === "qwen") {
+      return "https://www.qianwen.com/";
+    }
+    if (target === "doubao") {
+      return "https://www.doubao.com/chat/";
+    }
+    if (target === "deepseek") {
+      return "https://chat.deepseek.com/";
     }
     return QUICK_ASK_TARGETS[target] || "https://chatgpt.com/";
   }

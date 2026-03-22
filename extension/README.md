@@ -18,6 +18,9 @@
 
 - `chatgpt.com`（兼容 `chat.openai.com`）
 - `gemini.google.com`
+- `www.qianwen.com`
+- `www.doubao.com`
+- `chat.deepseek.com`
 
 ### 快速安装
 
@@ -54,6 +57,9 @@
 
 - `chatgpt.com` (`chat.openai.com` compatible)
 - `gemini.google.com`
+- `www.qianwen.com`
+- `www.doubao.com`
+- `chat.deepseek.com`
 
 ### Quick Install
 
