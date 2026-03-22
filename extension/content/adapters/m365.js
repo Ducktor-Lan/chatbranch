@@ -32,35 +32,68 @@
     const raw = utils.uniqueElements(selectors, root);
     const elements = utils.pruneNestedElements(raw);
 
-    return elements.filter((el) => {
+    const candidates = [];
+    for (const el of elements) {
       if (!isDirectMessageNode(el)) {
-        return false;
+        continue;
       }
       if (!utils.shouldTreatAsMessage(el) || !utils.looksLikeMessageContainer(el)) {
-        return false;
+        continue;
       }
-      if (isInComposerArea(el)) {
-        return false;
+      if (isInComposerArea(el) || isCompositeContainer(el)) {
+        continue;
       }
-      if (isCompositeContainer(el)) {
-        return false;
-      }
+
       const text = getText(el);
       if (!text || utils.isLikelyUrlOnlyText(text)) {
-        return false;
+        continue;
       }
+
       const role = getRole(el);
       if (role === "unknown") {
-        return false;
+        continue;
       }
       if (role === "user" && !isMeaningfulUserText(text)) {
-        return false;
+        continue;
       }
       if (role === "assistant" && !isMeaningfulAssistantText(text)) {
-        return false;
+        continue;
       }
-      return true;
-    });
+
+      candidates.push({ el, role, text, dataTestId: (el.getAttribute("data-testid") || "").toLowerCase() });
+    }
+
+    const seen = new Set();
+    const output = [];
+    for (const item of candidates) {
+      const key = `${item.role}|${item.text.replace(/\s+/g, " ").trim()}`;
+      if (seen.has(key)) {
+        continue;
+      }
+      if (item.dataTestId === "loading-message" && hasSameAssistantText(candidates, item.text, item.el)) {
+        continue;
+      }
+      seen.add(key);
+      output.push(item.el);
+    }
+    return output;
+  }
+
+  function hasSameAssistantText(candidates, text, currentEl) {
+    const normalized = text.replace(/\s+/g, " ").trim();
+    for (const item of candidates) {
+      if (item.el === currentEl) {
+        continue;
+      }
+      if (item.role !== "assistant") {
+        continue;
+      }
+      const t = item.text.replace(/\s+/g, " ").trim();
+      if (t === normalized) {
+        return true;
+      }
+    }
+    return false;
   }
 
   function isDirectMessageNode(el) {
