@@ -693,11 +693,23 @@
   function getOutlineItems() {
     const list = [];
     for (const m of state.orderedMessages) {
-      if (m.role === "user" && String(m.text || "").trim().length >= 3) {
+      if (m.role === "user" && isUsablePromptText(m.text)) {
         list.push({ ...m, order: list.length + 1, title: makeTitle(m.text) });
       }
     }
     return list;
+  }
+
+  function isUsablePromptText(text) {
+    const value = String(text || "").trim();
+    if (value.length < 2) {
+      return false;
+    }
+    if (/^[:：\-\s]+$/.test(value)) {
+      return false;
+    }
+    const alphaNum = value.replace(/[^\p{L}\p{N}\u4e00-\u9fff]/gu, "");
+    return alphaNum.length >= 2;
   }
 
   function renderOutline(force) {

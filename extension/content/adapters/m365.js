@@ -49,7 +49,17 @@
       if (!text || utils.isLikelyUrlOnlyText(text)) {
         return false;
       }
-      return getRole(el) !== "unknown";
+      const role = getRole(el);
+      if (role === "unknown") {
+        return false;
+      }
+      if (role === "user" && !isMeaningfulUserText(text)) {
+        return false;
+      }
+      if (role === "assistant" && !isMeaningfulAssistantText(text)) {
+        return false;
+      }
+      return true;
     });
   }
 
@@ -84,6 +94,29 @@
         el.closest("[class*='EditorInput']") ||
         el.closest("form")
     );
+  }
+
+  function isMeaningfulUserText(text) {
+    const value = String(text || "").trim();
+    if (value.length < 2) {
+      return false;
+    }
+    if (/^[:：\-\s]+$/.test(value)) {
+      return false;
+    }
+    const alphaNum = value.replace(/[^\p{L}\p{N}\u4e00-\u9fff]/gu, "");
+    return alphaNum.length >= 2;
+  }
+
+  function isMeaningfulAssistantText(text) {
+    const value = String(text || "").trim();
+    if (value.length < 4) {
+      return false;
+    }
+    if (/^[:：\-\s]+$/.test(value)) {
+      return false;
+    }
+    return true;
   }
 
   function getRole(el) {
