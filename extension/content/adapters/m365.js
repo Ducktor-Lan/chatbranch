@@ -1,9 +1,9 @@
-(function registerDoubao(global) {
-  const siteKey = "doubao";
+(function registerM365(global) {
+  const siteKey = "m365";
   const utils = global.ChatBranchAdapterUtils;
 
   function match(locationObj) {
-    return locationObj.hostname === "www.doubao.com";
+    return locationObj.hostname === "m365.cloud.microsoft";
   }
 
   function getScrollContainer() {
@@ -12,30 +12,29 @@
 
   function getMessageElements() {
     const root =
-      document.querySelector("[class*='conversation']") ||
-      document.querySelector("[class*='chat-content']") ||
       document.querySelector("main") ||
+      document.querySelector("[role='main']") ||
       document;
 
     const selectors = [
-      "[data-testid*='chat-message']",
-      "[data-testid*='message-item']",
-      "[data-testid*='conversation-turn']",
-      "chat-turn",
+      "div[data-content]",
       "div[role='listitem']",
-      "li[role='listitem']",
       "article",
       "[data-message-author-role]",
       "[data-role]",
-      "[class*='chat-message']",
-      "[class*='message-item']",
+      "[data-testid*='message']",
+      "[data-testid*='turn']",
+      "[class*='message']",
+      "[class*='chat-item']",
+      "[class*='turn']",
       "[class*='user']",
       "[class*='assistant']",
-      "[class*='bubble']"
+      "[class*='copilot']"
     ];
 
     const raw = utils.uniqueElements(selectors, root);
     const elements = utils.pruneNestedElements(raw);
+
     return elements.filter((el) => {
       if (!utils.shouldTreatAsMessage(el) || !utils.looksLikeMessageContainer(el)) {
         return false;
@@ -49,47 +48,36 @@
   }
 
   function getRole(el) {
-    const tag = (el.tagName || "").toLowerCase();
-    if (tag === "a") {
-      return "unknown";
-    }
-
     const roleAttr =
       el.getAttribute("data-message-author-role") ||
       el.getAttribute("data-role") ||
       el.getAttribute("role") ||
       "";
-    if (/user|human|question|query|me/i.test(roleAttr)) {
+    if (/user|human|question|query|me|you/i.test(roleAttr)) {
       return "user";
     }
-    if (/assistant|ai|model|answer|doubao/i.test(roleAttr)) {
+    if (/assistant|ai|copilot|model|answer/i.test(roleAttr)) {
       return "assistant";
-    }
-
-    const role = utils.inferRoleCommon(el);
-    if (role !== "unknown") {
-      return role;
     }
 
     const token = `${el.className || ""} ${el.getAttribute("aria-label") || ""}`.toLowerCase();
-    if (token.includes("question") || token.includes("query") || token.includes("prompt")) {
+    if (token.includes("user") || token.includes("question") || token.includes("prompt") || token.includes("query")) {
       return "user";
     }
-    if (token.includes("response") || token.includes("answer") || token.includes("result")) {
-      return "assistant";
-    }
-    if (token.includes("user") || token.includes("question") || token.includes("query")) {
-      return "user";
-    }
-    if (token.includes("assistant") || token.includes("doubao") || token.includes("ai")) {
+    if (token.includes("assistant") || token.includes("copilot") || token.includes("answer") || token.includes("response")) {
       return "assistant";
     }
 
+    const common = utils.inferRoleCommon(el);
+    if (common !== "unknown") {
+      return common;
+    }
+
     const text = utils.cleanMessageText(el.innerText || "");
-    if (/^我[：:]/.test(text) || /^请|^帮我|^解释|^给我|^请你/.test(text)) {
+    if (/^you\s*:/i.test(text) || /^你[：:]/.test(text) || /^请|^帮我|^给我|^解释/.test(text)) {
       return "user";
     }
-    if (/^你|^好的|^可以|^当然|^以下/.test(text)) {
+    if (/^copilot\s*:/i.test(text) || /^当然|^好的|^可以|^以下/.test(text)) {
       return "assistant";
     }
     return "unknown";
@@ -102,9 +90,9 @@
       "[data-testid*='answer']",
       "[data-role='message-content']",
       "[class*='message-content']",
-      "[class*='bubble-content']",
+      "[class*='content']",
       "[class*='markdown']",
-      "[class*='content']"
+      "[class*='prose']"
     ]);
   }
 

@@ -18,9 +18,7 @@
 
 - `chatgpt.com`（兼容 `chat.openai.com`）
 - `gemini.google.com`
-- `www.qianwen.com`
-- `www.doubao.com`
-- `chat.deepseek.com`
+- `m365.cloud.microsoft/chat/?auth=1`（M365 Copilot）
 
 ### 快速安装
 
@@ -58,9 +56,7 @@
 
 - `chatgpt.com` (`chat.openai.com` compatible)
 - `gemini.google.com`
-- `www.qianwen.com`
-- `www.doubao.com`
-- `chat.deepseek.com`
+- `m365.cloud.microsoft/chat/?auth=1` (M365 Copilot)
 
 ### Quick Install
 
