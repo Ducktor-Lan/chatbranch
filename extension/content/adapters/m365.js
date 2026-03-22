@@ -33,7 +33,13 @@
     const elements = utils.pruneNestedElements(raw);
 
     return elements.filter((el) => {
+      if (!isDirectMessageNode(el)) {
+        return false;
+      }
       if (!utils.shouldTreatAsMessage(el) || !utils.looksLikeMessageContainer(el)) {
+        return false;
+      }
+      if (isInComposerArea(el)) {
         return false;
       }
       if (isCompositeContainer(el)) {
@@ -45,6 +51,39 @@
       }
       return getRole(el) !== "unknown";
     });
+  }
+
+  function isDirectMessageNode(el) {
+    const id = (el.id || "").toLowerCase();
+    const cls = (el.className || "").toString().toLowerCase();
+    const dataTestId = (el.getAttribute("data-testid") || "").toLowerCase();
+
+    if (id.startsWith("user-message-")) {
+      return true;
+    }
+    if (cls.includes("fai-usermessage__message") || cls.includes("fai-usermessage")) {
+      return true;
+    }
+    if (
+      dataTestId === "copilot-message-div" ||
+      dataTestId === "copilot-message-reply-div" ||
+      dataTestId === "loading-message"
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  function isInComposerArea(el) {
+    return Boolean(
+      el.closest("[role='textbox']") ||
+        el.closest("[aria-label*='发送消息']") ||
+        el.closest("[aria-label*='message']") ||
+        el.closest("[id*='editor']") ||
+        el.closest("[id*='composer']") ||
+        el.closest("[class*='EditorInput']") ||
+        el.closest("form")
+    );
   }
 
   function getRole(el) {
