@@ -10,7 +10,8 @@
     "https://chat.openai.com/*",
     "https://gemini.google.com/*",
     "https://m365.cloud.microsoft/*",
-    "https://chat.deepseek.com/*"
+    "https://chat.deepseek.com/*",
+    "https://www.doubao.com/*"
   ],
   "background": {
     "service_worker": "service_worker.js"
@@ -26,7 +27,8 @@
         "https://chat.openai.com/*",
         "https://gemini.google.com/*",
         "https://m365.cloud.microsoft/*",
-        "https://chat.deepseek.com/*"
+        "https://chat.deepseek.com/*",
+        "https://www.doubao.com/*"
       ],
       "js": [
         "content/adapters/utils.js",
@@ -35,6 +37,7 @@
         "content/adapters/gemini.js",
         "content/adapters/m365.js",
         "content/adapters/deepseek.js",
+        "content/adapters/doubao.js",
         "content/content_script.js"
       ],
       "css": ["content/styles.css"],

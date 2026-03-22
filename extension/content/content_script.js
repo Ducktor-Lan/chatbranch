@@ -16,7 +16,8 @@
     chatgpt: "https://chatgpt.com/",
     gemini: "https://gemini.google.com/app",
     m365: "https://m365.cloud.microsoft/chat/?auth=1",
-    deepseek: "https://chat.deepseek.com/"
+    deepseek: "https://chat.deepseek.com/",
+    doubao: "https://www.doubao.com/chat/"
   };
 
   const state = {
@@ -632,6 +633,9 @@
     }
     if (target === "deepseek") {
       return "https://chat.deepseek.com/";
+    }
+    if (target === "doubao") {
+      return "https://www.doubao.com/chat/";
     }
     return QUICK_ASK_TARGETS[target] || "https://chatgpt.com/";
   }

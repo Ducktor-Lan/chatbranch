@@ -20,6 +20,7 @@
 - `gemini.google.com`
 - `m365.cloud.microsoft/chat/?auth=1`（M365 Copilot）
 - `chat.deepseek.com`
+- `www.doubao.com`
 
 ### 快速安装
 
@@ -59,6 +60,7 @@
 - `gemini.google.com`
 - `m365.cloud.microsoft/chat/?auth=1` (M365 Copilot)
 - `chat.deepseek.com`
+- `www.doubao.com`
 
 ### Quick Install
 
