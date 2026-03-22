@@ -104,6 +104,19 @@
     if (/^[:：\-\s]+$/.test(value)) {
       return false;
     }
+    if (/^[:：\-\s]+\S*$/.test(value) && value.length <= 6) {
+      return false;
+    }
+    if (/^\S+[:：]\s*$/.test(value)) {
+      return false;
+    }
+    if (/^https?:\/\//i.test(value) && value.length < 140) {
+      return false;
+    }
+    const valueNoLinks = value.replace(/https?:\/\/\S+/g, "").trim();
+    if (valueNoLinks.length < 2) {
+      return false;
+    }
     const alphaNum = value.replace(/[^\p{L}\p{N}\u4e00-\u9fff]/gu, "");
     return alphaNum.length >= 2;
   }
@@ -141,7 +154,7 @@
       el.getAttribute("data-role") ||
       el.getAttribute("role") ||
       "";
-    if (/user|human|question|query|me|you/i.test(roleAttr)) {
+    if (/user|human|question|query|me/i.test(roleAttr)) {
       return "user";
     }
     if (/assistant|ai|copilot|model|answer/i.test(roleAttr)) {
@@ -161,7 +174,7 @@
       return common;
     }
 
-    const text = utils.cleanMessageText(el.innerText || "");
+    const text = cleanupM365Text(el.innerText || "");
     if (/^you\s*:/i.test(text) || /^你[：:]/.test(text) || /^请|^帮我|^给我|^解释/.test(text)) {
       return "user";
     }
@@ -183,11 +196,23 @@
       "[class*='markdown']",
       "[class*='prose']"
     ]);
-    text = text
-      .replace(/^you\s*said\s*:\s*/i, "")
-      .replace(/^copilot\s*said\s*:\s*/i, "")
-      .trim();
+    text = cleanupM365Text(text);
     return text;
+  }
+
+  function cleanupM365Text(raw) {
+    const lines = String(raw || "")
+      .split(/\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .filter((line) => !/^you\s*said\s*:?$/i.test(line))
+      .filter((line) => !/^copilot\s*said\s*:?$/i.test(line))
+      .filter((line) => !/^copilot$/i.test(line))
+      .filter((line) => !/^\d{1,2}月\s*\d{1,2}$/i.test(line))
+      .filter((line) => !/^\d{1,2}\/\d{1,2}(\/\d{2,4})?$/.test(line))
+      .filter((line) => !/^[:：\-\s]+$/.test(line));
+
+    return utils.cleanMessageText(lines.join("\n"));
   }
 
   function isCompositeContainer(el) {

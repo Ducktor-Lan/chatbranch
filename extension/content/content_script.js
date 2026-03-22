@@ -708,6 +708,16 @@
     if (/^[:：\-\s]+$/.test(value)) {
       return false;
     }
+    if (/^\S+[:：]\s*$/.test(value)) {
+      return false;
+    }
+    if (/^https?:\/\//i.test(value) && value.length < 140) {
+      return false;
+    }
+    const noLinks = value.replace(/https?:\/\/\S+/g, "").trim();
+    if (noLinks.length < 2) {
+      return false;
+    }
     const alphaNum = value.replace(/[^\p{L}\p{N}\u4e00-\u9fff]/gu, "");
     return alphaNum.length >= 2;
   }
