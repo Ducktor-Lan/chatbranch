@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChatBranch Settings</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+        font-family: "Segoe UI", "PingFang SC", sans-serif;
+        background: #f1f5f9;
+        color: #0f172a;
+      }
+      .wrap {
+        max-width: 780px;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+      }
+      h1 {
+        margin: 0 0 16px;
+        font-size: 24px;
+      }
+      .field {
+        margin: 0 0 16px;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      input[type='text'],
+      input[type='number'],
+      select,
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 10px;
+        font-size: 14px;
+        font-family: inherit;
+      }
+      button {
+        border: 0;
+        border-radius: 8px;
+        background: #0284c7;
+        color: #ffffff;
+        padding: 10px 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .hint {
+        color: #334155;
+        font-size: 13px;
+      }
+      .status {
+        margin-top: 12px;
+        font-size: 13px;
+        color: #0369a1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>ChatBranch Settings</h1>
+      <div class="field">
+        <label for="overlayTtlMs">Overlay Duration (ms)</label>
+        <input id="overlayTtlMs" type="number" min="1000" step="500" />
+      </div>
+      <div class="field">
+        <label>
+          <input id="debugMode" type="checkbox" />
+          Enable debug logs
+        </label>
+      </div>
+      <div class="field">
+        <label for="quickAskTarget">Quick Ask Target Site</label>
+        <select id="quickAskTarget">
+          <option value="same-site">Same as current site</option>
+          <option value="chatgpt">ChatGPT</option>
+          <option value="gemini">Gemini</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="commonCommands">Common Command Library (one per line)</label>
+        <textarea id="commonCommands" rows="8" placeholder="总结上文关键结论\n提取行动清单\n把回答改写成邮件"></textarea>
+        <div class="hint">These commands appear in ChatBranch panel command list.</div>
+      </div>
+      <button id="saveBtn" type="button">Save</button>
+      <div id="status" class="status"></div>
+    </div>
+    <script src="options.js"></script>
+  </body>
+</html>

@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "ChatBranch",
+  "description": "Chat outline navigation and quick ask for major AI chat sites.",
+  "version": "0.1.0",
+  "minimum_chrome_version": "114",
+  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://gemini.google.com/*"
+  ],
+  "background": {
+    "service_worker": "service_worker.js"
+  },
+  "action": {
+    "default_title": "ChatBranch"
+  },
+  "options_page": "options/options.html",
+  "commands": {
+    "quick-ask": {
+      "suggested_key": {
+        "default": "Alt+Shift+Q"
+      },
+      "description": "Quick ask with selected text"
+    },
+    "toggle-panel": {
+      "suggested_key": {
+        "default": "Alt+I"
+      },
+      "description": "Toggle ChatBranch panel"
+    },
+    "focus-search": {
+      "suggested_key": {
+        "default": "Alt+S"
+      },
+      "description": "Focus ChatBranch search"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://gemini.google.com/*"
+      ],
+      "js": [
+        "content/adapters/utils.js",
+        "content/adapters/registry.js",
+        "content/adapters/chatgpt.js",
+        "content/adapters/gemini.js",
+        "content/content_script.js"
+      ],
+      "css": ["content/styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
