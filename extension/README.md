@@ -1,55 +1,79 @@
 # ChatBranch (MV3)
 
-ChatBranch is a Chrome/Edge Manifest V3 extension focused on:
+中文优先文档。English version: [Jump to English](#english)
 
-- M1: Multi-site injection + Outline navigation
-- M2: AskLine Quick Ask with Gemini provider
+---
 
-## Supported sites (current adapters)
+## 中文
 
-- chatgpt.com (+ chat.openai.com)
-- gemini.google.com
+### 功能概览
 
-## Implemented now
+- 对话索引导航（按用户问题）
+- 新标签页分支提问（携带会话上下文 + 选中引用）
+- Prompt Library（新增/查看/删除/复用）
+- 点击公式区域复制 LaTeX
+- 按问题导出 Markdown
 
-- Site adapter registry and 2 adapters (ChatGPT/Gemini)
-- Outline panel with user-message indexing
-- Incremental collector cache (better performance on long chats)
-- Search filter, click-to-jump, scroll spy active highlight
-- MutationObserver incremental refresh
-- Context menu + keyboard command pipeline for Quick Ask
-- Quick Ask opens a new tab on ChatGPT/Gemini and prepares prompt with context
-- Options page for overlay TTL, debug mode, quick-ask target site
+### 支持站点
 
-## Load extension
+- `chatgpt.com`（兼容 `chat.openai.com`）
+- `gemini.google.com`
+
+### 快速安装
+
+1. 打开 `chrome://extensions` 或 `edge://extensions`
+2. 开启开发者模式
+3. 点击“加载已解压的扩展程序”
+4. 选择当前目录 `extension/`
+
+### 快速使用
+
+- 右侧面板：搜索并跳转历史用户提问
+- 右键文本：`ChatBranch: Ask In New Tab` 发起分支提问
+- `Prompt Library`：管理常用提示词并插入输入框
+- 点击公式：自动复制标准化 `$...$`
+- `Export Selected MD`：按问题编号导出对应问答块
+
+### 快捷键
+
+- `Alt+I`：显示/隐藏面板
+- `Alt+S`：聚焦搜索框
+- `Alt+Shift+Q`：打开 Quick Ask 提问流程
+
+---
+
+## English
+
+### Feature Overview
+
+- User-question outline navigation
+- New-tab branch asking with context + selected quote
+- Prompt Library (add/view/delete/reuse)
+- Click formula area to copy LaTeX
+- Export selected question block to Markdown
+
+### Supported Sites
+
+- `chatgpt.com` (`chat.openai.com` compatible)
+- `gemini.google.com`
+
+### Quick Install
 
 1. Open `chrome://extensions` or `edge://extensions`
-2. Enable developer mode
-3. Click "Load unpacked"
+2. Enable Developer Mode
+3. Click **Load unpacked**
 4. Select `extension/`
 
-## Commands
+### Quick Use
 
-- `Alt+I`: toggle panel
-- `Alt+S`: focus search
-- `Alt+Shift+Q`: quick ask selected text
+- Right panel: search and jump user prompts
+- Right click selected text: `ChatBranch: Ask In New Tab`
+- `Prompt Library`: manage and insert reusable prompts
+- Click formula output to copy normalized `$...$`
+- `Export Selected MD`: export selected Q&A block
 
-## Quick Ask behavior
+### Shortcuts
 
-- Right click selected text -> `ChatBranch: Ask In New Tab`
-- ChatBranch asks for your question in a prompt dialog
-- A new tab is opened at target AI site set in options
-- Prompt includes recent conversation context + selected text + your question
-- ChatBranch attempts to auto-fill prompt into the new page composer
-- If auto-fill fails, prompt is copied to clipboard as fallback
-
-## Extra Tools
-
-- Prompt Library: one button to add/view/reuse prompts, selected prompt inserts into composer
-- Click-to-Copy LaTeX: clicking formula area copies normalized `$...$`
-- Export Selected Markdown: export one selected question block (question + outputs)
-
-## Reliability Notes
-
-- For diagnostics, enable `debug mode` in options and inspect page console logs.
-- Gemini does not support URL-based auto-filled prompt reliably; ChatBranch opens Gemini tab and keeps prompt in the dialog flow.
+- `Alt+I`: Toggle panel
+- `Alt+S`: Focus search
+- `Alt+Shift+Q`: Open quick ask dialog
