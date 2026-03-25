@@ -1,7 +1,8 @@
 (function initChatBranch() {
   const STORAGE_KEY = {
     settings: "chatbranch:settings",
-    pendingQuickAsk: "chatbranch:pendingQuickAsk"
+    pendingQuickAsk: "chatbranch:pendingQuickAsk",
+    customNames: "chatbranch:customNames"
   };
 
   const DEFAULT_SETTINGS = {
@@ -16,8 +17,7 @@
     chatgpt: "https://chatgpt.com/",
     gemini: "https://gemini.google.com/app",
     m365: "https://m365.cloud.microsoft/chat/?auth=1",
-    deepseek: "https://chat.deepseek.com/",
-    doubao: "https://www.doubao.com/chat/"
+    deepseek: "https://chat.deepseek.com/"
   };
 
   const state = {
@@ -37,13 +37,16 @@
     promptModal: null,
     promptListRoot: null,
     promptInput: null,
+    promptContentInput: null,
     wakeButton: null,
     isCollapsed: false,
     messageByEl: new WeakMap(),
     orderedMessages: [],
     scheduled: false,
     lastStructureHash: "",
-    scrollContainer: window
+    scrollContainer: window,
+    customNames: {},
+    nameEditModal: null
   };
 
   function log(...args) {
@@ -65,6 +68,7 @@
     state.scrollContainer = state.adapter.getScrollContainer?.() || window;
 
     await loadSettings();
+    await loadCustomNames();
     await consumePendingQuickAsk();
     mountPanel();
     fullRebuild();
@@ -79,6 +83,27 @@
     const stored = await chrome.storage.local.get(STORAGE_KEY.settings);
     const settings = stored[STORAGE_KEY.settings] || {};
     state.settings = { ...DEFAULT_SETTINGS, ...settings };
+    // Normalize commonCommands to { title, content } format
+    if (Array.isArray(state.settings.commonCommands)) {
+      state.settings.commonCommands = normalizeCommands(state.settings.commonCommands);
+    }
+  }
+
+  async function loadCustomNames() {
+    const stored = await chrome.storage.local.get(STORAGE_KEY.customNames);
+    state.customNames = stored[STORAGE_KEY.customNames] || {};
+  }
+
+  function normalizeCommands(commands) {
+    return commands.map(function(cmd) {
+      if (typeof cmd === "string") {
+        return {
+          title: cmd.length > 20 ? cmd.slice(0, 20) + "..." : cmd,
+          content: cmd
+        };
+      }
+      return cmd;
+    });
   }
 
   function bindRuntimeMessages() {
@@ -403,7 +428,10 @@
         '<div class="chatbranch-modal-card">' +
         '<div class="chatbranch-modal-title">Prompt Library</div>' +
         '<div id="chatbranch-prompt-list" class="chatbranch-prompt-list"></div>' +
-        '<textarea id="chatbranch-prompt-input" class="chatbranch-prompt-input" placeholder="输入新提示词"></textarea>' +
+        '<div class="chatbranch-prompt-input-group">' +
+        '<input id="chatbranch-prompt-title" class="chatbranch-prompt-title-input" type="text" placeholder="标题（显示在按钮上）" />' +
+        '<textarea id="chatbranch-prompt-input" class="chatbranch-prompt-input" placeholder="提示词内容"></textarea>' +
+        '</div>' +
         '<div class="chatbranch-modal-actions">' +
         '<button id="chatbranch-prompt-add" class="chatbranch-btn" type="button">Add</button>' +
         '<button id="chatbranch-prompt-close" class="chatbranch-btn" type="button">Close</button>' +
@@ -412,6 +440,7 @@
       state.promptModal = modal;
       state.promptListRoot = modal.querySelector("#chatbranch-prompt-list");
       state.promptInput = modal.querySelector("#chatbranch-prompt-input");
+      state.promptContentInput = modal.querySelector("#chatbranch-prompt-title");
       modal.querySelector("#chatbranch-prompt-add")?.addEventListener("click", () => addPromptItem());
       modal.querySelector("#chatbranch-prompt-close")?.addEventListener("click", () => closePromptLibrary());
     }
@@ -426,14 +455,19 @@
   }
 
   function addPromptItem() {
-    const value = String(state.promptInput?.value || "").trim();
-    if (!value) {
+    const titleInput = state.promptContentInput;
+    const contentInput = state.promptInput;
+    const title = String(titleInput?.value || "").trim();
+    const content = String(contentInput?.value || "").trim();
+    if (!content) {
       return;
     }
+    const finalTitle = title || (content.length > 20 ? content.slice(0, 20) + "..." : content);
     const list = Array.isArray(state.settings.commonCommands) ? [...state.settings.commonCommands] : [];
-    list.push(value);
+    list.push({ title: finalTitle, content: content });
     state.settings.commonCommands = list;
-    state.promptInput.value = "";
+    titleInput.value = "";
+    contentInput.value = "";
     saveSettings();
     renderPromptItems();
   }
@@ -445,18 +479,21 @@
     state.promptListRoot.innerHTML = "";
     const list = Array.isArray(state.settings.commonCommands) ? state.settings.commonCommands : [];
     for (let i = 0; i < list.length; i += 1) {
-      const cmd = list[i];
+      const item = list[i];
+      const title = typeof item === "string" ? (item.length > 20 ? item.slice(0, 20) + "..." : item) : (item.title || item.content);
+      const content = typeof item === "string" ? item : item.content;
       const row = document.createElement("div");
       row.className = "chatbranch-prompt-row";
       const useBtn = document.createElement("button");
       useBtn.className = "chatbranch-cmd-chip";
       useBtn.type = "button";
-      useBtn.textContent = cmd;
-      useBtn.addEventListener("click", () => {
+      useBtn.textContent = title;
+      useBtn.title = content;
+      useBtn.addEventListener("click", function() {
         closePromptLibrary();
         const composer = findComposerElement();
-        if (!composer || !appendComposerText(composer, cmd)) {
-          tryCopyText(cmd);
+        if (!composer || !appendComposerText(composer, content)) {
+          tryCopyText(content);
           showOverlay("ChatBranch: input box not found. Prompt copied to clipboard.", true);
           return;
         }
@@ -466,7 +503,7 @@
       delBtn.className = "chatbranch-btn chatbranch-tool-btn";
       delBtn.type = "button";
       delBtn.textContent = "Delete";
-      delBtn.addEventListener("click", () => {
+      delBtn.addEventListener("click", function() {
         const next = [...list];
         next.splice(i, 1);
         state.settings.commonCommands = next;
@@ -634,9 +671,6 @@
     if (target === "deepseek") {
       return "https://chat.deepseek.com/";
     }
-    if (target === "doubao") {
-      return "https://www.doubao.com/chat/";
-    }
     return QUICK_ASK_TARGETS[target] || "https://chatgpt.com/";
   }
 
@@ -759,9 +793,31 @@
       const li = document.createElement("li");
       li.className = "chatbranch-item";
       li.setAttribute("data-anchor", item.domAnchorId);
-      li.innerHTML = '<span class="chatbranch-item-index">' + item.order + '</span><span class="chatbranch-item-title"></span>';
-      li.querySelector(".chatbranch-item-title").textContent = item.title;
-      li.addEventListener("click", () => jumpToAnchor(item.domAnchorId));
+
+      // Include conversationId in the key to ensure names are scoped to current conversation
+      const customNameKey = `${state.conversationId}:${item.domAnchorId}`;
+      const customName = state.customNames[customNameKey];
+      const displayName = customName || item.title;
+
+      li.innerHTML =
+        '<span class="chatbranch-item-index">' + item.order + '</span>' +
+        '<span class="chatbranch-item-title"></span>' +
+        '<button class="chatbranch-item-edit" type="button" title="编辑名称">✏️</button>';
+
+      li.querySelector(".chatbranch-item-title").textContent = displayName;
+      if (customName) {
+        li.querySelector(".chatbranch-item-title").classList.add("chatbranch-item-custom");
+      }
+
+      li.addEventListener("click", (e) => {
+        if (e.target.classList.contains("chatbranch-item-edit")) {
+          e.stopPropagation();
+          openNameEditModal(item.domAnchorId, displayName);
+        } else {
+          jumpToAnchor(item.domAnchorId);
+        }
+      });
+
       state.listRoot.appendChild(li);
     }
 
@@ -787,9 +843,33 @@
   function jumpToAnchor(anchorId) {
     const target = document.getElementById(anchorId) || document.querySelector(`[data-chatbranch-anchor-id='${anchorId}']`);
     if (!target) {
+      log("jumpToAnchor: target not found for", anchorId);
       return;
     }
-    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    log("jumpToAnchor: found target", target);
+
+    // For custom scroll containers, we need to scroll the container instead of window
+    const scrollContainer = state.scrollContainer;
+    if (scrollContainer && scrollContainer !== window) {
+      // Calculate position relative to scroll container
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const offsetTop = targetRect.top - containerRect.top + scrollContainer.scrollTop;
+      const containerHeight = containerRect.height;
+      const targetHeight = targetRect.height;
+
+      // Scroll to center the target
+      const scrollTo = offsetTop - (containerHeight / 2) + (targetHeight / 2);
+      log("jumpToAnchor: custom scroll container, scrolling to", scrollTo);
+      scrollContainer.scrollTo({
+        top: Math.max(0, scrollTo),
+        behavior: "smooth"
+      });
+    } else {
+      // Use standard scrollIntoView for window scrolling
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
     target.classList.add("chatbranch-target-highlight");
     setTimeout(() => target.classList.remove("chatbranch-target-highlight"), 1400);
     state.activeAnchorId = anchorId;
@@ -907,6 +987,75 @@
       return DEFAULT_SETTINGS.overlayTtlMs;
     }
     return Math.min(30000, Math.max(1000, Math.floor(n)));
+  }
+
+  function openNameEditModal(anchorId, currentName) {
+    if (!state.nameEditModal) {
+      const modal = document.createElement("div");
+      modal.className = "chatbranch-name-modal";
+      modal.innerHTML =
+        '<div class="chatbranch-name-modal-card">' +
+        '<div class="chatbranch-name-modal-title">编辑名称</div>' +
+        '<input id="chatbranch-name-input" class="chatbranch-name-input" type="text" placeholder="输入自定义名称（留空恢复默认）" />' +
+        '<div class="chatbranch-name-modal-actions">' +
+        '<button id="chatbranch-name-save" class="chatbranch-btn" type="button">保存</button>' +
+        '<button id="chatbranch-name-cancel" class="chatbranch-btn" type="button">取消</button>' +
+        "</div></div>";
+      document.body.appendChild(modal);
+      state.nameEditModal = modal;
+    }
+
+    const input = state.nameEditModal.querySelector("#chatbranch-name-input");
+    input.value = currentName || "";
+
+    state.nameEditModal.style.display = "flex";
+    input.focus();
+
+    const saveBtn = state.nameEditModal.querySelector("#chatbranch-name-save");
+    const cancelBtn = state.nameEditModal.querySelector("#chatbranch-name-cancel");
+
+    const handleSave = function() {
+      const newName = input.value.trim();
+      // Include conversationId in the key to scope names to current conversation
+      const customNameKey = `${state.conversationId}:${anchorId}`;
+      if (newName) {
+        state.customNames[customNameKey] = newName;
+      } else {
+        delete state.customNames[customNameKey];
+      }
+      saveCustomNames();
+      renderOutline(true);
+      closeNameEditModal();
+      showOverlay(newName ? "ChatBranch: 名称已保存" : "ChatBranch: 已恢复默认名称", false);
+    };
+
+    const handleCancel = function() {
+      closeNameEditModal();
+    };
+
+    const handleKeydown = function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleSave();
+      } else if (e.key === "Escape") {
+        handleCancel();
+      }
+    };
+
+    // Remove old listeners and add new ones
+    saveBtn.onclick = handleSave;
+    cancelBtn.onclick = handleCancel;
+    input.onkeydown = handleKeydown;
+  }
+
+  function closeNameEditModal() {
+    if (state.nameEditModal) {
+      state.nameEditModal.style.display = "none";
+    }
+  }
+
+  async function saveCustomNames() {
+    await chrome.storage.local.set({ [STORAGE_KEY.customNames]: state.customNames });
   }
 
   function throttle(fn, wait) {

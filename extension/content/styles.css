@@ -275,6 +275,110 @@
   }
 }
 
+/* Item edit button - show on hover */
+.chatbranch-item {
+  position: relative;
+}
+
+.chatbranch-item-edit {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.chatbranch-item:hover .chatbranch-item-edit {
+  opacity: 0.7;
+}
+
+.chatbranch-item-edit:hover {
+  opacity: 1 !important;
+}
+
+/* Custom name indicator */
+.chatbranch-item-custom {
+  font-style: italic;
+  color: #0369a1;
+}
+
+/* Name edit modal */
+.chatbranch-name-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483700;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.chatbranch-name-modal-card {
+  width: min(400px, calc(100vw - 24px));
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+}
+
+.chatbranch-name-modal-title {
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 12px;
+}
+
+.chatbranch-name-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  margin-bottom: 12px;
+  outline: none;
+}
+
+.chatbranch-name-input:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+}
+
+.chatbranch-name-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Prompt input group - title + content */
+.chatbranch-prompt-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.chatbranch-prompt-title-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+
+.chatbranch-prompt-title-input:focus {
+  border-color: #0284c7;
+}
+
 @media (max-width: 860px) {
   #chatbranch-panel {
     right: 8px;
