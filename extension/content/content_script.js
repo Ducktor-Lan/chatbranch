@@ -26,7 +26,8 @@
     panelVisible: true,
     activeAnchorId: null,
     observer: null,
-    scrollListenerAttached: false,
+    scrollSpyContainer: null,
+    scrollSpyHandler: null,
     quickAskOverlay: null,
     settings: { ...DEFAULT_SETTINGS },
     panel: null,
@@ -55,6 +56,109 @@
     }
   }
 
+  function normalizeScrollContainer(container) {
+    if (
+      !container ||
+      container === window ||
+      container === document ||
+      container === document.body ||
+      container === document.documentElement ||
+      container === document.scrollingElement
+    ) {
+      return window;
+    }
+    return container instanceof HTMLElement ? container : window;
+  }
+
+  function isScrollableElement(el) {
+    if (!(el instanceof HTMLElement)) {
+      return false;
+    }
+    const style = window.getComputedStyle(el);
+    const overflow = `${style.overflowY || ""} ${style.overflow || ""}`.toLowerCase();
+    if (!/(auto|scroll|overlay)/.test(overflow)) {
+      return false;
+    }
+    return el.scrollHeight > el.clientHeight + 2;
+  }
+
+  function findNearestScrollableAncestor(node) {
+    let current = node instanceof HTMLElement ? node.parentElement : null;
+    while (current && current !== document.body && current !== document.documentElement) {
+      if (isScrollableElement(current)) {
+        return current;
+      }
+      current = current.parentElement;
+    }
+    return null;
+  }
+
+  function isValidScrollContainer(container, target) {
+    if (container === window) {
+      return true;
+    }
+    if (!(container instanceof HTMLElement)) {
+      return false;
+    }
+    if (target instanceof HTMLElement && !container.contains(target)) {
+      return false;
+    }
+    return isScrollableElement(container);
+  }
+
+  function resolveScrollContainer(target) {
+    const fromTarget = findNearestScrollableAncestor(target);
+    if (fromTarget) {
+      return fromTarget;
+    }
+
+    const fromAdapter = normalizeScrollContainer(state.adapter?.getScrollContainer?.() || window);
+    if (isValidScrollContainer(fromAdapter, target)) {
+      return fromAdapter;
+    }
+
+    const fromState = normalizeScrollContainer(state.scrollContainer);
+    if (isValidScrollContainer(fromState, target)) {
+      return fromState;
+    }
+
+    return window;
+  }
+
+  function applyScrollSpyContainer(nextContainer) {
+    const normalized = normalizeScrollContainer(nextContainer);
+    if (state.scrollSpyContainer === normalized) {
+      state.scrollContainer = normalized;
+      return normalized;
+    }
+
+    if (state.scrollSpyContainer && state.scrollSpyHandler) {
+      if (state.scrollSpyContainer === window) {
+        window.removeEventListener("scroll", state.scrollSpyHandler);
+      } else {
+        state.scrollSpyContainer.removeEventListener("scroll", state.scrollSpyHandler);
+      }
+    }
+
+    state.scrollSpyContainer = normalized;
+    state.scrollContainer = normalized;
+
+    if (state.scrollSpyHandler) {
+      if (normalized === window) {
+        window.addEventListener("scroll", state.scrollSpyHandler, { passive: true });
+      } else {
+        normalized.addEventListener("scroll", state.scrollSpyHandler, { passive: true });
+      }
+      log("scroll spy container updated", normalized);
+    }
+    return normalized;
+  }
+
+  function syncScrollContainer(target) {
+    const resolved = resolveScrollContainer(target);
+    return applyScrollSpyContainer(resolved);
+  }
+
   async function bootstrap() {
     if (!window.ChatBranchAdapters) {
       return;
@@ -65,7 +169,7 @@
     }
 
     state.conversationId = state.adapter.detectConversationId?.() || window.location.pathname || "default";
-    state.scrollContainer = state.adapter.getScrollContainer?.() || window;
+    state.scrollContainer = normalizeScrollContainer(state.adapter.getScrollContainer?.() || window);
 
     await loadSettings();
     await loadCustomNames();
@@ -691,6 +795,12 @@
     }
 
     const rawElements = state.adapter.getMessageElements();
+    if (rawElements.length) {
+      syncScrollContainer(rawElements[rawElements.length - 1]);
+    } else {
+      syncScrollContainer(null);
+    }
+
     for (let i = 0; i < rawElements.length; i += 1) {
       const el = rawElements[i];
       const role = state.adapter.getRole(el);
@@ -848,25 +958,26 @@
     }
     log("jumpToAnchor: found target", target);
 
-    // For custom scroll containers, we need to scroll the container instead of window
-    const scrollContainer = state.scrollContainer;
-    if (scrollContainer && scrollContainer !== window) {
-      // Calculate position relative to scroll container
+    const scrollContainer = syncScrollContainer(target);
+    if (scrollContainer && scrollContainer !== window && isValidScrollContainer(scrollContainer, target)) {
       const containerRect = scrollContainer.getBoundingClientRect();
       const targetRect = target.getBoundingClientRect();
       const offsetTop = targetRect.top - containerRect.top + scrollContainer.scrollTop;
       const containerHeight = containerRect.height;
       const targetHeight = targetRect.height;
 
-      // Scroll to center the target
       const scrollTo = offsetTop - (containerHeight / 2) + (targetHeight / 2);
       log("jumpToAnchor: custom scroll container, scrolling to", scrollTo);
-      scrollContainer.scrollTo({
-        top: Math.max(0, scrollTo),
-        behavior: "smooth"
-      });
+      const nextTop = Math.max(0, scrollTo);
+      if (typeof scrollContainer.scrollTo === "function") {
+        scrollContainer.scrollTo({
+          top: nextTop,
+          behavior: "smooth"
+        });
+      } else {
+        scrollContainer.scrollTop = nextTop;
+      }
     } else {
-      // Use standard scrollIntoView for window scrolling
       target.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 
@@ -897,23 +1008,17 @@
   }
 
   function bindScrollSpy() {
-    if (state.scrollListenerAttached) {
+    if (state.scrollSpyHandler) {
       return;
     }
-    const onScroll = throttle(() => {
+    state.scrollSpyHandler = throttle(() => {
       const nearest = getNearestUserAnchor();
       if (nearest) {
         state.activeAnchorId = nearest;
         applyActiveItem();
       }
     }, 120);
-
-    if (state.scrollContainer === window) {
-      window.addEventListener("scroll", onScroll, { passive: true });
-    } else {
-      state.scrollContainer.addEventListener("scroll", onScroll, { passive: true });
-    }
-    state.scrollListenerAttached = true;
+    syncScrollContainer(null);
   }
 
   function getNearestUserAnchor() {
@@ -921,7 +1026,11 @@
     if (!outline.length) {
       return null;
     }
-    const midpoint = window.innerHeight * 0.35;
+    let midpoint = window.innerHeight * 0.35;
+    if (state.scrollContainer && state.scrollContainer !== window) {
+      const containerRect = state.scrollContainer.getBoundingClientRect();
+      midpoint = containerRect.top + containerRect.height * 0.35;
+    }
     let minDist = Number.POSITIVE_INFINITY;
     let selected = null;
     for (const item of outline) {

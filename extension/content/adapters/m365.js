@@ -7,7 +7,57 @@
   }
 
   function getScrollContainer() {
-    return document.querySelector("main") || document.scrollingElement || window;
+    const root =
+      document.querySelector("main") ||
+      document.querySelector("[role='main']") ||
+      document;
+
+    const messageSelectors = [
+      "[id^='user-message-']",
+      ".fai-UserMessage__message",
+      "[data-testid='copilot-message-div']",
+      "[data-testid='copilot-message-reply-div']",
+      "[data-testid='loading-message']"
+    ];
+
+    for (const selector of messageSelectors) {
+      const node = root.querySelector(selector) || document.querySelector(selector);
+      const container = findScrollableAncestor(node);
+      if (container) {
+        return container;
+      }
+    }
+
+    const main = document.querySelector("main") || document.querySelector("[role='main']");
+    const fromMain = findScrollableAncestor(main);
+    if (fromMain) {
+      return fromMain;
+    }
+
+    return document.scrollingElement || window;
+  }
+
+  function findScrollableAncestor(node) {
+    let current = node instanceof HTMLElement ? node.parentElement : null;
+    while (current && current !== document.body && current !== document.documentElement) {
+      if (isScrollableElement(current)) {
+        return current;
+      }
+      current = current.parentElement;
+    }
+    return null;
+  }
+
+  function isScrollableElement(el) {
+    if (!(el instanceof HTMLElement)) {
+      return false;
+    }
+    const style = window.getComputedStyle(el);
+    const overflow = `${style.overflowY || ""} ${style.overflow || ""}`.toLowerCase();
+    if (!/(auto|scroll|overlay)/.test(overflow)) {
+      return false;
+    }
+    return el.scrollHeight > el.clientHeight + 2;
   }
 
   function getMessageElements() {
