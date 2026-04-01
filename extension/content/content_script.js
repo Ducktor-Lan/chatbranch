@@ -1043,7 +1043,7 @@
       updateExportLabel(questionItems, idx);
     };
 
-    modal.querySelector("#chatbranch-export-btn").onclick = function() {
+    state.exportModal.querySelector("#chatbranch-export-btn").onclick = function() {
       const index = parseInt(state.exportIndexInput.value, 10);
       const format = state.exportFormatSelect.value;
       if (index < 1 || index > maxIndex) {
@@ -1060,7 +1060,7 @@
       state.exportModal.style.display = "none";
     };
 
-    modal.querySelector("#chatbranch-export-cancel").onclick = function() {
+    state.exportModal.querySelector("#chatbranch-export-cancel").onclick = function() {
       state.exportModal.style.display = "none";
     };
 
