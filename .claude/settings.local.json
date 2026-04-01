@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(findstr \"2025\")",
+      "Bash(dir:*)"
+    ]
+  }
+}
