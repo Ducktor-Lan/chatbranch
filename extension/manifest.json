@@ -18,6 +18,29 @@
   "action": {
     "default_title": "ChatBranch"
   },
+  "commands": {
+    "toggle-panel": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+B",
+        "mac": "Command+Shift+B"
+      },
+      "description": "Toggle ChatBranch panel"
+    },
+    "quick-ask": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Q",
+        "mac": "Command+Shift+Q"
+      },
+      "description": "Open Quick Ask dialog"
+    },
+    "focus-search": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+F",
+        "mac": "Command+Shift+F"
+      },
+      "description": "Focus search in panel"
+    }
+  },
   "options_page": "options/options.html",
   "content_scripts": [
     {

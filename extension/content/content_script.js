@@ -29,6 +29,11 @@
     scrollSpyContainer: null,
     scrollSpyHandler: null,
     quickAskOverlay: null,
+    quickAskModal: null,
+    quickAskSelection: null,
+    quickAskQuestionInput: null,
+    quickAskPreview: null,
+    currentQuickAskSelection: "",
     settings: { ...DEFAULT_SETTINGS },
     panel: null,
     searchInput: null,
@@ -39,6 +44,10 @@
     promptListRoot: null,
     promptInput: null,
     promptContentInput: null,
+    promptSearchInput: null,
+    promptCategoryFilter: null,
+    promptCategoryInput: null,
+    promptFileInput: null,
     wakeButton: null,
     isCollapsed: false,
     messageByEl: new WeakMap(),
@@ -47,7 +56,11 @@
     lastStructureHash: "",
     scrollContainer: window,
     customNames: {},
-    nameEditModal: null
+    nameEditModal: null,
+    exportModal: null,
+    exportIndexInput: null,
+    exportFormatSelect: null,
+    exportLabel: null
   };
 
   function log(...args) {
@@ -229,20 +242,83 @@
 
   function openQuickAskDialog(selectionText) {
     const seed = (selectionText || "").trim();
-    const userQuestion = window.prompt("ChatBranch Quick Ask\n请输入你的问题", "");
-    if (!userQuestion || !userQuestion.trim()) {
-      return;
+    showQuickAskPreviewModal(seed);
+  }
+
+  function showQuickAskPreviewModal(selectionText) {
+    if (!state.quickAskModal) {
+      const modal = document.createElement("div");
+      modal.className = "chatbranch-modal";
+      modal.innerHTML =
+        '<div class="chatbranch-modal-card chatbranch-quickask-modal-card">' +
+        '<div class="chatbranch-modal-title">Quick Ask - Branch Question</div>' +
+        '<div class="chatbranch-quickask-content">' +
+        '<div class="chatbranch-quickask-row">' +
+        '<label>选中文本:</label>' +
+        '<div id="chatbranch-quickask-selection" class="chatbranch-quickask-selection"></div>' +
+        '</div>' +
+        '<div class="chatbranch-quickask-row">' +
+        '<label>你的问题:</label>' +
+        '<input id="chatbranch-quickask-question" class="chatbranch-quickask-input" type="text" placeholder="输入你的问题..." />' +
+        '</div>' +
+        '<div class="chatbranch-quickask-row">' +
+        '<label>生成的 Prompt:</label>' +
+        '<textarea id="chatbranch-quickask-preview" class="chatbranch-quickask-preview" readonly></textarea>' +
+        '</div>' +
+        '</div>' +
+        '<div class="chatbranch-modal-actions">' +
+        '<button id="chatbranch-quickask-send" class="chatbranch-btn" type="button">Send to New Tab</button>' +
+        '<button id="chatbranch-quickask-cancel" class="chatbranch-btn" type="button">Cancel</button>' +
+        '</div>' +
+        '</div>';
+      document.body.appendChild(modal);
+      state.quickAskModal = modal;
+      state.quickAskSelection = modal.querySelector("#chatbranch-quickask-selection");
+      state.quickAskQuestionInput = modal.querySelector("#chatbranch-quickask-question");
+      state.quickAskPreview = modal.querySelector("#chatbranch-quickask-preview");
+
+      state.quickAskQuestionInput.addEventListener("input", function() {
+        updateQuickAskPreview();
+      });
+
+      modal.querySelector("#chatbranch-quickask-send").addEventListener("click", function() {
+        const question = String(state.quickAskQuestionInput.value || "").trim();
+        if (!question) {
+          showOverlay("ChatBranch: please enter your question.", true);
+          return;
+        }
+        const composedPrompt = state.quickAskPreview.value;
+        const target = resolveQuickAskTarget();
+        const finalUrl = buildQuickAskUrl(target);
+        savePendingQuickAsk(target, composedPrompt);
+        chrome.runtime.sendMessage({ type: "CHATBRANCH_OPEN_TAB", url: finalUrl }, function() {
+          tryCopyText(composedPrompt);
+          showOverlay("ChatBranch: new tab opened, prompt prepared and copied.", false);
+        });
+        state.quickAskModal.style.display = "none";
+      });
+
+      modal.querySelector("#chatbranch-quickask-cancel").addEventListener("click", function() {
+        state.quickAskModal.style.display = "none";
+      });
     }
 
-    const composedPrompt = composeQuickAskPrompt(seed, userQuestion.trim());
-    const target = resolveQuickAskTarget();
-    const finalUrl = buildQuickAskUrl(target);
+    state.currentQuickAskSelection = selectionText;
+    state.quickAskSelection.textContent = selectionText || "(无)";
+    state.quickAskQuestionInput.value = "";
+    updateQuickAskPreview();
 
-    savePendingQuickAsk(target, composedPrompt);
-    chrome.runtime.sendMessage({ type: "CHATBRANCH_OPEN_TAB", url: finalUrl }, () => {
-      tryCopyText(composedPrompt);
-      showOverlay("ChatBranch: new tab opened, prompt prepared and copied.", false);
-    });
+    state.quickAskModal.style.display = "flex";
+    state.quickAskQuestionInput.focus();
+  }
+
+  function updateQuickAskPreview() {
+    const selectionText = state.currentQuickAskSelection || "";
+    const question = String(state.quickAskQuestionInput?.value || "").trim();
+    const preview = composeQuickAskPrompt(selectionText, question);
+    if (state.quickAskPreview) {
+      state.quickAskPreview.value = preview;
+    }
   }
 
   function composeQuickAskPrompt(selectionText, userQuestion) {
@@ -524,29 +600,68 @@
     }
   }
 
+  function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+  }
+
   function openPromptLibrary() {
     if (!state.promptModal) {
       const modal = document.createElement("div");
       modal.className = "chatbranch-modal";
       modal.innerHTML =
-        '<div class="chatbranch-modal-card">' +
+        '<div class="chatbranch-modal-card chatbranch-prompt-modal-card">' +
         '<div class="chatbranch-modal-title">Prompt Library</div>' +
+        '<div class="chatbranch-prompt-toolbar">' +
+        '<input id="chatbranch-prompt-search" class="chatbranch-prompt-search" type="text" placeholder="搜索提示词..." />' +
+        '<select id="chatbranch-prompt-category-filter" class="chatbranch-category-filter">' +
+        '<option value="">全部分类</option>' +
+        '<option value="通用">通用</option>' +
+        '<option value="写作">写作</option>' +
+        '<option value="编程">编程</option>' +
+        '<option value="翻译">翻译</option>' +
+        '<option value="分析">分析</option>' +
+        '</select>' +
+        '</div>' +
         '<div id="chatbranch-prompt-list" class="chatbranch-prompt-list"></div>' +
         '<div class="chatbranch-prompt-input-group">' +
+        '<div class="chatbranch-prompt-row-inputs">' +
         '<input id="chatbranch-prompt-title" class="chatbranch-prompt-title-input" type="text" placeholder="标题（显示在按钮上）" />' +
+        '<select id="chatbranch-prompt-category" class="chatbranch-category-select">' +
+        '<option value="">无分类</option>' +
+        '<option value="通用">通用</option>' +
+        '<option value="写作">写作</option>' +
+        '<option value="编程">编程</option>' +
+        '<option value="翻译">翻译</option>' +
+        '<option value="分析">分析</option>' +
+        '</select>' +
+        '</div>' +
         '<textarea id="chatbranch-prompt-input" class="chatbranch-prompt-input" placeholder="提示词内容"></textarea>' +
         '</div>' +
         '<div class="chatbranch-modal-actions">' +
+        '<button id="chatbranch-prompt-import" class="chatbranch-btn chatbranch-tool-btn" type="button">Import</button>' +
+        '<button id="chatbranch-prompt-export" class="chatbranch-btn chatbranch-tool-btn" type="button">Export</button>' +
         '<button id="chatbranch-prompt-add" class="chatbranch-btn" type="button">Add</button>' +
         '<button id="chatbranch-prompt-close" class="chatbranch-btn" type="button">Close</button>' +
-        "</div></div>";
+        '</div>' +
+        '<input type="file" id="chatbranch-prompt-file-input" accept=".json" style="display:none" />' +
+        '</div>';
       document.body.appendChild(modal);
       state.promptModal = modal;
       state.promptListRoot = modal.querySelector("#chatbranch-prompt-list");
       state.promptInput = modal.querySelector("#chatbranch-prompt-input");
       state.promptContentInput = modal.querySelector("#chatbranch-prompt-title");
+      state.promptSearchInput = modal.querySelector("#chatbranch-prompt-search");
+      state.promptCategoryFilter = modal.querySelector("#chatbranch-prompt-category-filter");
+      state.promptCategoryInput = modal.querySelector("#chatbranch-prompt-category");
+      state.promptFileInput = modal.querySelector("#chatbranch-prompt-file-input");
+
       modal.querySelector("#chatbranch-prompt-add")?.addEventListener("click", () => addPromptItem());
       modal.querySelector("#chatbranch-prompt-close")?.addEventListener("click", () => closePromptLibrary());
+      modal.querySelector("#chatbranch-prompt-export")?.addEventListener("click", () => exportPrompts());
+      modal.querySelector("#chatbranch-prompt-import")?.addEventListener("click", () => state.promptFileInput?.click());
+      state.promptFileInput?.addEventListener("change", (e) => importPrompts(e));
+      state.promptSearchInput?.addEventListener("input", () => renderPromptItems());
+      state.promptCategoryFilter?.addEventListener("change", () => renderPromptItems());
     }
     renderPromptItems();
     state.promptModal.style.display = "flex";
@@ -561,17 +676,26 @@
   function addPromptItem() {
     const titleInput = state.promptContentInput;
     const contentInput = state.promptInput;
+    const categoryInput = state.promptCategoryInput;
     const title = String(titleInput?.value || "").trim();
     const content = String(contentInput?.value || "").trim();
     if (!content) {
       return;
     }
     const finalTitle = title || (content.length > 20 ? content.slice(0, 20) + "..." : content);
+    const category = String(categoryInput?.value || "").trim();
     const list = Array.isArray(state.settings.commonCommands) ? [...state.settings.commonCommands] : [];
-    list.push({ title: finalTitle, content: content });
+    list.push({
+      id: generateId(),
+      title: finalTitle,
+      content: content,
+      category: category || undefined,
+      createdAt: Date.now()
+    });
     state.settings.commonCommands = list;
     titleInput.value = "";
     contentInput.value = "";
+    if (categoryInput) categoryInput.value = "";
     saveSettings();
     renderPromptItems();
   }
@@ -581,43 +705,165 @@
       return;
     }
     state.promptListRoot.innerHTML = "";
-    const list = Array.isArray(state.settings.commonCommands) ? state.settings.commonCommands : [];
-    for (let i = 0; i < list.length; i += 1) {
-      const item = list[i];
-      const title = typeof item === "string" ? (item.length > 20 ? item.slice(0, 20) + "..." : item) : (item.title || item.content);
-      const content = typeof item === "string" ? item : item.content;
-      const row = document.createElement("div");
-      row.className = "chatbranch-prompt-row";
-      const useBtn = document.createElement("button");
-      useBtn.className = "chatbranch-cmd-chip";
-      useBtn.type = "button";
-      useBtn.textContent = title;
-      useBtn.title = content;
-      useBtn.addEventListener("click", function() {
-        closePromptLibrary();
-        const composer = findComposerElement();
-        if (!composer || !appendComposerText(composer, content)) {
-          tryCopyText(content);
-          showOverlay("ChatBranch: input box not found. Prompt copied to clipboard.", true);
+    let list = Array.isArray(state.settings.commonCommands) ? state.settings.commonCommands : [];
+
+    // Normalize to object format
+    list = list.map(function(item) {
+      if (typeof item === "string") {
+        return { id: generateId(), title: item.length > 20 ? item.slice(0, 20) + "..." : item, content: item, category: undefined };
+      }
+      return item.id ? item : { ...item, id: generateId() };
+    });
+
+    // Filter by search query
+    const searchQuery = String(state.promptSearchInput?.value || "").trim().toLowerCase();
+    if (searchQuery) {
+      list = list.filter(function(item) {
+        const title = (item.title || "").toLowerCase();
+        const content = (item.content || "").toLowerCase();
+        const category = (item.category || "").toLowerCase();
+        return title.includes(searchQuery) || content.includes(searchQuery) || category.includes(searchQuery);
+      });
+    }
+
+    // Filter by category
+    const categoryFilter = String(state.promptCategoryFilter?.value || "").trim();
+    if (categoryFilter) {
+      list = list.filter(function(item) {
+        return (item.category || "") === categoryFilter;
+      });
+    }
+
+    // Group by category
+    const groups = {};
+    const noCategory = [];
+    for (const item of list) {
+      if (item.category) {
+        if (!groups[item.category]) {
+          groups[item.category] = [];
+        }
+        groups[item.category].push(item);
+      } else {
+        noCategory.push(item);
+      }
+    }
+
+    // Render grouped items
+    const allCategories = Object.keys(groups).sort();
+    for (const cat of allCategories) {
+      const header = document.createElement("div");
+      header.className = "chatbranch-prompt-category-header";
+      header.textContent = cat + " (" + groups[cat].length + ")";
+      state.promptListRoot.appendChild(header);
+      for (const item of groups[cat]) {
+        renderPromptItem(item);
+      }
+    }
+
+    // Render uncategorized items
+    if (noCategory.length > 0) {
+      const header = document.createElement("div");
+      header.className = "chatbranch-prompt-category-header";
+      header.textContent = "未分类 (" + noCategory.length + ")";
+      state.promptListRoot.appendChild(header);
+      for (const item of noCategory) {
+        renderPromptItem(item);
+      }
+    }
+
+    if (list.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "chatbranch-prompt-empty";
+      empty.textContent = searchQuery || categoryFilter ? "没有找到匹配的提示词" : "暂无提示词，请添加";
+      state.promptListRoot.appendChild(empty);
+    }
+  }
+
+  function renderPromptItem(item) {
+    const title = item.title || item.content;
+    const content = item.content;
+    const row = document.createElement("div");
+    row.className = "chatbranch-prompt-row";
+    const useBtn = document.createElement("button");
+    useBtn.className = "chatbranch-cmd-chip";
+    useBtn.type = "button";
+    useBtn.textContent = title;
+    useBtn.title = content;
+    useBtn.addEventListener("click", function() {
+      closePromptLibrary();
+      const composer = findComposerElement();
+      if (!composer || !appendComposerText(composer, content)) {
+        tryCopyText(content);
+        showOverlay("ChatBranch: input box not found. Prompt copied to clipboard.", true);
+        return;
+      }
+      showOverlay("ChatBranch: prompt inserted.", false);
+    });
+    const delBtn = document.createElement("button");
+    delBtn.className = "chatbranch-btn chatbranch-tool-btn";
+    delBtn.type = "button";
+    delBtn.textContent = "Delete";
+    delBtn.addEventListener("click", function() {
+      const next = (state.settings.commonCommands || []).filter(function(p) {
+        return p.id !== item.id;
+      });
+      state.settings.commonCommands = next;
+      saveSettings();
+      renderPromptItems();
+    });
+    row.appendChild(useBtn);
+    row.appendChild(delBtn);
+    state.promptListRoot.appendChild(row);
+  }
+
+  function exportPrompts() {
+    const list = state.settings.commonCommands || [];
+    const json = JSON.stringify(list, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "chatbranch-prompts-" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showOverlay("ChatBranch: prompts exported.", false);
+  }
+
+  function importPrompts(event) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const imported = JSON.parse(e.target.result);
+        if (!Array.isArray(imported)) {
+          showOverlay("ChatBranch: invalid format. Expected array.", true);
           return;
         }
-        showOverlay("ChatBranch: prompt inserted.", false);
-      });
-      const delBtn = document.createElement("button");
-      delBtn.className = "chatbranch-btn chatbranch-tool-btn";
-      delBtn.type = "button";
-      delBtn.textContent = "Delete";
-      delBtn.addEventListener("click", function() {
-        const next = [...list];
-        next.splice(i, 1);
-        state.settings.commonCommands = next;
+        const existingIds = new Set((state.settings.commonCommands || []).map(function(p) { return p.id; }));
+        const newList = [...(state.settings.commonCommands || [])];
+        for (const item of imported) {
+          const normalized = typeof item === "string"
+            ? { id: generateId(), title: item.slice(0, 20), content: item }
+            : { ...item, id: item.id || generateId() };
+          if (!existingIds.has(normalized.id)) {
+            newList.push(normalized);
+          }
+        }
+        state.settings.commonCommands = newList;
         saveSettings();
         renderPromptItems();
-      });
-      row.appendChild(useBtn);
-      row.appendChild(delBtn);
-      state.promptListRoot.appendChild(row);
-    }
+        showOverlay("ChatBranch: imported " + imported.length + " prompts.", false);
+      } catch (err) {
+        showOverlay("ChatBranch: import failed. " + err.message, true);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = "";
   }
 
   function saveSettings() {
@@ -674,6 +920,191 @@
     return stripped ? `$${stripped}$` : "";
   }
 
+  const exportFormatters = {
+    markdown: function(blocks, meta) {
+      const lines = [`# ${meta.title}`, "", `- Exported by ChatBranch`, `- Time: ${meta.timestamp}`, ""];
+      lines.push(`## Selected Question`);
+      lines.push(meta.question || "");
+      lines.push("");
+      lines.push("## Outputs");
+      lines.push("");
+      for (const m of blocks) {
+        const role = m.role === "user" ? "User" : m.role === "assistant" ? "Assistant" : "Message";
+        lines.push(`### ${role}`);
+        lines.push(String(m.text || ""));
+        lines.push("");
+      }
+      return lines.join("\n");
+    },
+    html: function(blocks, meta) {
+      let html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(meta.title)}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; line-height: 1.6; }
+    h1 { border-bottom: 2px solid #0284c7; padding-bottom: 10px; }
+    h3 { color: #334155; margin-top: 24px; }
+    .meta { color: #64748b; font-size: 14px; }
+    .message { background: #f8fafc; padding: 16px; border-radius: 8px; margin: 12px 0; white-space: pre-wrap; }
+    .user { background: #e0f2fe; }
+    .assistant { background: #f0fdf4; }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(meta.title)}</h1>
+  <p class="meta">Exported by ChatBranch | ${escapeHtml(meta.timestamp)}</p>
+  <h2>Selected Question</h2>
+  <div class="message user">${escapeHtml(meta.question || "")}</div>
+  <h2>Outputs</h2>`;
+      for (const m of blocks) {
+        const role = m.role === "user" ? "User" : m.role === "assistant" ? "Assistant" : "Message";
+        const roleClass = m.role === "user" ? "user" : m.role === "assistant" ? "assistant" : "";
+        html += `\n  <h3>${escapeHtml(role)}</h3>\n  <div class="message ${roleClass}">${escapeHtml(String(m.text || ""))}</div>`;
+      }
+      html += "\n</body>\n</html>";
+      return html;
+    },
+    json: function(blocks, meta) {
+      return JSON.stringify({
+        title: meta.title,
+        exportedAt: meta.timestamp,
+        exporter: "ChatBranch",
+        question: meta.question,
+        messages: blocks.map(function(m) {
+          return { role: m.role, text: m.text };
+        })
+      }, null, 2);
+    },
+    txt: function(blocks, meta) {
+      const lines = [meta.title, "=".repeat(50), "", `Exported by ChatBranch | ${meta.timestamp}`, "", "SELECTED QUESTION:", meta.question || "", ""];
+      lines.push("OUTPUTS:", "");
+      for (const m of blocks) {
+        const role = m.role === "user" ? "USER" : m.role === "assistant" ? "ASSISTANT" : "MESSAGE";
+        lines.push("[" + role + "]", String(m.text || ""), "");
+      }
+      return lines.join("\n");
+    }
+  };
+
+  function escapeHtml(text) {
+    return String(text || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function showExportDialog(questionItems) {
+    if (!state.exportModal) {
+      const modal = document.createElement("div");
+      modal.className = "chatbranch-modal";
+      modal.innerHTML =
+        '<div class="chatbranch-modal-card">' +
+        '<div class="chatbranch-modal-title">Export Conversation</div>' +
+        '<div class="chatbranch-export-content">' +
+        '<div class="chatbranch-export-row">' +
+        '<label>Message Index:</label>' +
+        '<input id="chatbranch-export-index" class="chatbranch-export-input" type="number" min="1" value="1" />' +
+        '<span id="chatbranch-export-label" class="chatbranch-export-label"></span>' +
+        '</div>' +
+        '<div class="chatbranch-export-row">' +
+        '<label>Format:</label>' +
+        '<select id="chatbranch-export-format" class="chatbranch-export-select">' +
+        '<option value="markdown">Markdown (.md)</option>' +
+        '<option value="html">HTML (.html)</option>' +
+        '<option value="json">JSON (.json)</option>' +
+        '<option value="txt">Plain Text (.txt)</option>' +
+        '</select>' +
+        '</div>' +
+        '</div>' +
+        '<div class="chatbranch-modal-actions">' +
+        '<button id="chatbranch-export-btn" class="chatbranch-btn" type="button">Export</button>' +
+        '<button id="chatbranch-export-cancel" class="chatbranch-btn" type="button">Cancel</button>' +
+        '</div>' +
+        '</div>';
+      document.body.appendChild(modal);
+      state.exportModal = modal;
+      state.exportIndexInput = modal.querySelector("#chatbranch-export-index");
+      state.exportFormatSelect = modal.querySelector("#chatbranch-export-format");
+      state.exportLabel = modal.querySelector("#chatbranch-export-label");
+    }
+
+    const maxIndex = questionItems.length;
+    state.exportIndexInput.max = maxIndex;
+    state.exportIndexInput.value = 1;
+    updateExportLabel(questionItems, 1);
+
+    state.exportIndexInput.oninput = function() {
+      const idx = parseInt(state.exportIndexInput.value, 10);
+      updateExportLabel(questionItems, idx);
+    };
+
+    modal.querySelector("#chatbranch-export-btn").onclick = function() {
+      const index = parseInt(state.exportIndexInput.value, 10);
+      const format = state.exportFormatSelect.value;
+      if (index < 1 || index > maxIndex) {
+        showOverlay("ChatBranch: invalid index.", true);
+        return;
+      }
+      const selected = questionItems[index - 1];
+      const block = collectMessageBlockByAnchor(selected.domAnchorId);
+      if (!block.length) {
+        showOverlay("ChatBranch: cannot resolve selected block.", true);
+        return;
+      }
+      performExport(selected, block, format);
+      state.exportModal.style.display = "none";
+    };
+
+    modal.querySelector("#chatbranch-export-cancel").onclick = function() {
+      state.exportModal.style.display = "none";
+    };
+
+    state.exportModal.style.display = "flex";
+    state.exportIndexInput.focus();
+  }
+
+  function updateExportLabel(questionItems, index) {
+    if (index >= 1 && index <= questionItems.length) {
+      state.exportLabel.textContent = questionItems[index - 1].title.slice(0, 40) + (questionItems[index - 1].title.length > 40 ? "..." : "");
+    } else {
+      state.exportLabel.textContent = "";
+    }
+  }
+
+  function performExport(selected, block, format) {
+    const title = extractConversationTitle();
+    const meta = {
+      title: title,
+      timestamp: new Date().toLocaleString(),
+      question: selected.text
+    };
+
+    const formatter = exportFormatters[format] || exportFormatters.markdown;
+    const content = formatter(block, meta);
+
+    const extensions = { markdown: "md", html: "html", json: "json", txt: "txt" };
+    const mimeTypes = { markdown: "text/markdown;charset=utf-8", html: "text/html;charset=utf-8", json: "application/json;charset=utf-8", txt: "text/plain;charset=utf-8" };
+    const ext = extensions[format] || "txt";
+    const mimeType = mimeTypes[format] || "text/plain;charset=utf-8";
+
+    const ts = new Date().toISOString().replace(/[:.]/g, "-");
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${title || "chat"}-${ts}.${ext}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
+    showOverlay("ChatBranch: exported as " + format.toUpperCase() + ".", false);
+  }
+
   function exportActiveQuestionMarkdown() {
     if (!state.orderedMessages.length) {
       showOverlay("ChatBranch: no conversation messages found.", true);
@@ -686,46 +1117,7 @@
       return;
     }
 
-    const labels = questionItems.map((q) => `${q.order}. ${q.title}`);
-    const pick = window.prompt(`输入要导出的题号 (1-${labels.length})\n${labels.slice(0, 20).join("\n")}`, "1");
-    const index = Number(pick);
-    if (!Number.isFinite(index) || index < 1 || index > labels.length) {
-      showOverlay("ChatBranch: export canceled.", true);
-      return;
-    }
-
-    const selected = questionItems[index - 1];
-    const block = collectMessageBlockByAnchor(selected.domAnchorId);
-    if (!block.length) {
-      showOverlay("ChatBranch: cannot resolve selected block.", true);
-      return;
-    }
-
-    const title = extractConversationTitle();
-    const ts = new Date().toISOString().replace(/[:.]/g, "-");
-    const lines = [`# ${title}`, "", `- Exported by ChatBranch`, `- Time: ${new Date().toLocaleString()}`, ""];
-    lines.push(`## Selected Question`);
-    lines.push(selected.text);
-    lines.push("");
-    lines.push("## Outputs");
-    lines.push("");
-    for (const m of block) {
-      const role = m.role === "user" ? "User" : m.role === "assistant" ? "Assistant" : "Message";
-      lines.push(`## ${role}`);
-      lines.push(String(m.text || ""));
-      lines.push("");
-    }
-
-    const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${title || "chat"}-${ts}.md`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-    showOverlay("ChatBranch: markdown exported.", false);
+    showExportDialog(questionItems);
   }
 
   function collectMessageBlockByAnchor(anchorId) {
