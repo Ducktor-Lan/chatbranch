@@ -16,7 +16,6 @@
     "same-site": null,
     chatgpt: "https://chatgpt.com/",
     gemini: "https://gemini.google.com/app",
-    m365: "https://m365.cloud.microsoft/chat/?auth=1",
     deepseek: "https://chat.deepseek.com/"
   };
 
@@ -1160,9 +1159,6 @@
     }
     if (target === "gemini") {
       return "https://gemini.google.com/app";
-    }
-    if (target === "m365") {
-      return "https://m365.cloud.microsoft/chat/?auth=1";
     }
     if (target === "deepseek") {
       return "https://chat.deepseek.com/";

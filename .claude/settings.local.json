@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(findstr \"2025\")",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(node:*)"
     ]
   }
 }

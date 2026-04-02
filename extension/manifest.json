@@ -9,7 +9,6 @@
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
     "https://gemini.google.com/*",
-    "https://m365.cloud.microsoft/*",
     "https://chat.deepseek.com/*"
   ],
   "background": {
@@ -48,7 +47,6 @@
         "https://chatgpt.com/*",
         "https://chat.openai.com/*",
         "https://gemini.google.com/*",
-        "https://m365.cloud.microsoft/*",
         "https://chat.deepseek.com/*"
       ],
       "js": [
@@ -56,7 +54,6 @@
         "content/adapters/registry.js",
         "content/adapters/chatgpt.js",
         "content/adapters/gemini.js",
-        "content/adapters/m365.js",
         "content/adapters/deepseek.js",
         "content/content_script.js"
       ],

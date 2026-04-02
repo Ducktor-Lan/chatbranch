@@ -22,7 +22,6 @@
 
 - `chatgpt.com`（兼容 `chat.openai.com`）
 - `gemini.google.com`
-- `m365.cloud.microsoft/chat/?auth=1`（M365 Copilot）
 - `chat.deepseek.com`
 - `www.doubao.com`
 
@@ -62,7 +61,6 @@
 
 - `chatgpt.com` (`chat.openai.com` compatible)
 - `gemini.google.com`
-- `m365.cloud.microsoft/chat/?auth=1` (M365 Copilot)
 - `chat.deepseek.com`
 - `www.doubao.com`
 
