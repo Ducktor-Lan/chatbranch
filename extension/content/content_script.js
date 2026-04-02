@@ -59,7 +59,8 @@
     exportModal: null,
     exportIndexInput: null,
     exportFormatSelect: null,
-    exportLabel: null
+    exportLabel: null,
+    exportAllCheckbox: null
   };
 
   function log(...args) {
@@ -956,12 +957,12 @@
   <h1>${escapeHtml(meta.title)}</h1>
   <p class="meta">Exported by ChatBranch | ${escapeHtml(meta.timestamp)}</p>
   <h2>Selected Question</h2>
-  <div class="message user">${escapeHtml(meta.question || "")}</div>
+  <div class="message user">${escapeHtmlPreserveLatex(meta.question || "")}</div>
   <h2>Outputs</h2>`;
       for (const m of blocks) {
         const role = m.role === "user" ? "User" : m.role === "assistant" ? "Assistant" : "Message";
         const roleClass = m.role === "user" ? "user" : m.role === "assistant" ? "assistant" : "";
-        html += `\n  <h3>${escapeHtml(role)}</h3>\n  <div class="message ${roleClass}">${escapeHtml(String(m.text || ""))}</div>`;
+        html += `\n  <h3>${escapeHtml(role)}</h3>\n  <div class="message ${roleClass}">${escapeHtmlPreserveLatex(String(m.text || ""))}</div>`;
       }
       html += "\n</body>\n</html>";
       return html;
@@ -988,6 +989,117 @@
     }
   };
 
+  const exportFormattersAll = {
+    markdown: function(allBlocks, meta) {
+      const lines = [
+        `# ${meta.title}`,
+        "",
+        `- Exported by ChatBranch`,
+        `- Time: ${meta.timestamp}`,
+        `- Total Questions: ${meta.questionCount}`,
+        ""
+      ];
+
+      for (const block of allBlocks) {
+        lines.push("---");
+        lines.push("");
+        lines.push(`## Question ${block.questionOrder}`);
+        lines.push("");
+        lines.push(block.question || "");
+        lines.push("");
+        lines.push("### Response");
+        lines.push("");
+        for (const m of block.messages) {
+          if (m.role === "assistant") {
+            lines.push(String(m.text || ""));
+            lines.push("");
+          }
+        }
+      }
+      return lines.join("\n");
+    },
+
+    html: function(allBlocks, meta) {
+      let html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(meta.title)}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 900px; margin: 40px auto; padding: 20px; line-height: 1.6; }
+    h1 { border-bottom: 2px solid #0284c7; padding-bottom: 10px; }
+    h2 { color: #0284c7; margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 24px; }
+    h3 { color: #334155; margin-top: 16px; }
+    .meta { color: #64748b; font-size: 14px; }
+    .question { background: #e0f2fe; padding: 16px; border-radius: 8px; margin: 12px 0; white-space: pre-wrap; }
+    .response { background: #f0fdf4; padding: 16px; border-radius: 8px; margin: 12px 0; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(meta.title)}</h1>
+  <p class="meta">Exported by ChatBranch | ${escapeHtml(meta.timestamp)} | ${meta.questionCount} Questions</p>`;
+
+      for (const block of allBlocks) {
+        html += `\n  <h2>Question ${block.questionOrder}</h2>`;
+        html += `\n  <div class="question">${escapeHtmlPreserveLatex(block.question || "")}</div>`;
+        html += `\n  <h3>Response</h3>`;
+        for (const m of block.messages) {
+          if (m.role === "assistant") {
+            html += `\n  <div class="response">${escapeHtmlPreserveLatex(String(m.text || ""))}</div>`;
+          }
+        }
+      }
+      html += "\n</body>\n</html>";
+      return html;
+    },
+
+    json: function(allBlocks, meta) {
+      return JSON.stringify({
+        title: meta.title,
+        exportedAt: meta.timestamp,
+        exporter: "ChatBranch",
+        questionCount: meta.questionCount,
+        conversations: allBlocks.map(function(block) {
+          return {
+            questionOrder: block.questionOrder,
+            question: block.question,
+            messages: block.messages.map(function(m) {
+              return { role: m.role, text: m.text };
+            })
+          };
+        })
+      }, null, 2);
+    },
+
+    txt: function(allBlocks, meta) {
+      const lines = [
+        meta.title,
+        "=".repeat(50),
+        "",
+        `Exported by ChatBranch | ${meta.timestamp}`,
+        `Total Questions: ${meta.questionCount}`,
+        ""
+      ];
+
+      for (const block of allBlocks) {
+        lines.push("-".repeat(40));
+        lines.push("");
+        lines.push(`QUESTION ${block.questionOrder}:`);
+        lines.push(block.question || "");
+        lines.push("");
+        lines.push("RESPONSE:");
+        for (const m of block.messages) {
+          if (m.role === "assistant") {
+            lines.push(String(m.text || ""));
+          }
+        }
+        lines.push("");
+      }
+      return lines.join("\n");
+    }
+  };
+
   function escapeHtml(text) {
     return String(text || "")
       .replace(/&/g, "&amp;")
@@ -995,6 +1107,27 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
+  }
+
+  function escapeHtmlPreserveLatex(text) {
+    const latexPlaceholders = [];
+    const preserved = String(text || "").replace(/\$\$?[^$]+\$\$?/g, function(match) {
+      latexPlaceholders.push(match);
+      return `__LATEX_${latexPlaceholders.length - 1}__`;
+    });
+
+    let escaped = preserved
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+    latexPlaceholders.forEach(function(latex, i) {
+      escaped = escaped.replace(`__LATEX_${i}__`, latex);
+    });
+
+    return escaped;
   }
 
   function showExportDialog(questionItems) {
@@ -1009,6 +1142,11 @@
         '<label>Message Index:</label>' +
         '<input id="chatbranch-export-index" class="chatbranch-export-input" type="number" min="1" value="1" />' +
         '<span id="chatbranch-export-label" class="chatbranch-export-label"></span>' +
+        '</div>' +
+        '<div class="chatbranch-export-row chatbranch-export-all-row">' +
+        '<label>' +
+        '<input id="chatbranch-export-all" type="checkbox" /> Export all messages' +
+        '</label>' +
         '</div>' +
         '<div class="chatbranch-export-row">' +
         '<label>Format:</label>' +
@@ -1030,32 +1168,51 @@
       state.exportIndexInput = modal.querySelector("#chatbranch-export-index");
       state.exportFormatSelect = modal.querySelector("#chatbranch-export-format");
       state.exportLabel = modal.querySelector("#chatbranch-export-label");
+      state.exportAllCheckbox = modal.querySelector("#chatbranch-export-all");
     }
 
     const maxIndex = questionItems.length;
     state.exportIndexInput.max = maxIndex;
     state.exportIndexInput.value = 1;
+    state.exportAllCheckbox.checked = false;
+    state.exportIndexInput.disabled = false;
     updateExportLabel(questionItems, 1);
 
+    state.exportAllCheckbox.onchange = function() {
+      state.exportIndexInput.disabled = state.exportAllCheckbox.checked;
+      if (state.exportAllCheckbox.checked) {
+        state.exportLabel.textContent = `All ${maxIndex} questions`;
+      } else {
+        state.exportLabel.textContent = "";
+        updateExportLabel(questionItems, parseInt(state.exportIndexInput.value, 10));
+      }
+    };
+
     state.exportIndexInput.oninput = function() {
+      if (state.exportAllCheckbox.checked) return;
       const idx = parseInt(state.exportIndexInput.value, 10);
       updateExportLabel(questionItems, idx);
     };
 
     state.exportModal.querySelector("#chatbranch-export-btn").onclick = function() {
-      const index = parseInt(state.exportIndexInput.value, 10);
       const format = state.exportFormatSelect.value;
-      if (index < 1 || index > maxIndex) {
-        showOverlay("ChatBranch: invalid index.", true);
-        return;
+
+      if (state.exportAllCheckbox.checked) {
+        performExportAll(questionItems, format);
+      } else {
+        const index = parseInt(state.exportIndexInput.value, 10);
+        if (index < 1 || index > maxIndex) {
+          showOverlay("ChatBranch: invalid index.", true);
+          return;
+        }
+        const selected = questionItems[index - 1];
+        const block = collectMessageBlockByAnchor(selected.domAnchorId);
+        if (!block.length) {
+          showOverlay("ChatBranch: cannot resolve selected block.", true);
+          return;
+        }
+        performExport(selected, block, format);
       }
-      const selected = questionItems[index - 1];
-      const block = collectMessageBlockByAnchor(selected.domAnchorId);
-      if (!block.length) {
-        showOverlay("ChatBranch: cannot resolve selected block.", true);
-        return;
-      }
-      performExport(selected, block, format);
       state.exportModal.style.display = "none";
     };
 
@@ -1102,6 +1259,53 @@
     link.remove();
     setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
     showOverlay("ChatBranch: exported as " + format.toUpperCase() + ".", false);
+  }
+
+  function performExportAll(questionItems, format) {
+    const title = extractConversationTitle();
+    const allBlocks = [];
+
+    for (const item of questionItems) {
+      const block = collectMessageBlockByAnchor(item.domAnchorId);
+      if (block.length) {
+        allBlocks.push({
+          question: item.text,
+          questionOrder: item.order,
+          messages: block
+        });
+      }
+    }
+
+    if (!allBlocks.length) {
+      showOverlay("ChatBranch: no messages to export.", true);
+      return;
+    }
+
+    const meta = {
+      title: title,
+      timestamp: new Date().toLocaleString(),
+      questionCount: questionItems.length
+    };
+
+    const formatter = exportFormattersAll[format] || exportFormattersAll.markdown;
+    const content = formatter(allBlocks, meta);
+
+    const extensions = { markdown: "md", html: "html", json: "json", txt: "txt" };
+    const mimeTypes = { markdown: "text/markdown;charset=utf-8", html: "text/html;charset=utf-8", json: "application/json;charset=utf-8", txt: "text/plain;charset=utf-8" };
+    const ext = extensions[format] || "txt";
+    const mimeType = mimeTypes[format] || "text/plain;charset=utf-8";
+
+    const ts = new Date().toISOString().replace(/[:.]/g, "-");
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${title || "chat"}-all-${ts}.${ext}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
+    showOverlay(`ChatBranch: exported ${questionItems.length} questions as ${format.toUpperCase()}.`, false);
   }
 
   function exportActiveQuestionMarkdown() {

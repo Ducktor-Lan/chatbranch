@@ -93,14 +93,15 @@
   }
 
   function getText(el) {
-    const text = utils.extractBestText(el, [
+    const textEl = el.querySelector(".ds-markdown") || el;
+    const rawText = utils.extractBestText(el, [
       ".f9bf7997",
       ".ds-markdown",
       "[class*='markdown']",
       "[class*='content']",
       "[data-testid*='message-content']"
     ]);
-    return cleanupDeepSeekText(text);
+    return cleanupDeepSeekText(utils.extractTextWithLatex(textEl, rawText));
   }
 
   function cleanupDeepSeekText(raw) {

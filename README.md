@@ -226,6 +226,22 @@ ChatBranch/
 
 ## 更新日志 / Changelog
 
+### 2026-04-02 (V1.4)
+
+**新功能：**
+- **导出所有对话**：导出对话框新增"Export all messages"复选框，支持一键导出全部对话内容
+- **公式导出改进**：导出时尝试从 MathJax/KaTeX 渲染的公式中提取 LaTeX 源码
+
+**改进：**
+- 导出 HTML 格式时保留 LaTeX 公式分隔符（$...$）不被转义
+- 四种导出格式（Markdown、HTML、JSON、纯文本）均支持全量导出
+
+**移除：**
+- 移除 M365 Copilot (m365.cloud.microsoft) 适配器
+
+**已知限制：**
+- Gemini 页面的 KaTeX 渲染不保留 LaTeX 源码，公式将以渲染后文本形式导出
+
 ### 2026-04-01
 
 **新功能：**

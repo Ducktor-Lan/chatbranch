@@ -56,7 +56,8 @@
       el.querySelector(".model-response-text") ||
       el.querySelector(".markdown") ||
       el;
-    return utils.cleanMessageText(preferred.innerText || preferred.textContent || "");
+    const rawText = preferred.innerText || preferred.textContent || "";
+    return utils.cleanMessageText(utils.extractTextWithLatex(preferred, rawText));
   }
 
   function ensureAnchor(el) {

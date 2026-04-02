@@ -47,7 +47,8 @@
       el.querySelector("[data-message-author-role]") ||
       el.querySelector(".markdown") ||
       el;
-    return utils.normalizeText(candidate.innerText || candidate.textContent || "");
+    const rawText = candidate.innerText || candidate.textContent || "";
+    return utils.cleanMessageText(utils.extractTextWithLatex(candidate, rawText));
   }
 
   function ensureAnchor(el) {
